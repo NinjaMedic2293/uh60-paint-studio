@@ -19,13 +19,16 @@ export const BREAKS = {
 };
 const glsl = (n) => n.toFixed(4);
 export const MAXP = 8, MAXR = 8;
-export const AG = [1.30, 1.95, 0.74, 2.45];
+// MH-60T anti-glare: side break curve from belly (aBelly at y<=yLow) up to the windscreen rear upper corner (aTop,yTop);
+// above yRoof (within |z|<zRoof) the black covers the cabin roof back to the upper-cowling forward edge (aRoof).
+export const AG = [1.40, 0.80, 1.78, 2.25];
+export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
   const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
     // anti-glare break (re-derived from MH-60T photos): x = a of the vertical break just ahead of the cockpit-door front frame/hinges,
     // y = door-window sill height where it turns to follow the windscreen rear pillar, z = aft slope of that pillar (m a per m y),
     // w = windscreen top / roof line height; above it the break holds at the windscreen top edge
-    uAGp: { value: new THREE.Vector4(...AG) },
+    uAGp: { value: new THREE.Vector4(...AG) }, uAGq: { value: new THREE.Vector4(...AGQ) },
     uPN: { value: 0 }, uPl: { value: Array.from({ length: MAXP }, () => new THREE.Vector4(0, 1, 0, -99)) },
     uRN: { value: 0 }, uRS: { value: Array.from({ length: MAXR * 2 }, () => new THREE.Vector4()) }, uRC: { value: Array.from({ length: MAXR }, () => new THREE.Color()) },
     uPanId: { value: null }, uPanC: { value: null }, uPanOn: { value: 0 } };
@@ -52,7 +55,7 @@ function zoneGLSL(kind) {
     return ${ZI('upper')};
   }`;
 }
-const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float lim=uAGp.x + uAGp.z*clamp(w.y-uAGp.y,0.0,uAGp.w-uAGp.y); return a<lim; }`;
+const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float t=clamp((w.y-uAGp.y)/(uAGp.w-uAGp.y),0.0,1.0); float lim=uAGp.x+(uAGp.z-uAGp.x)*sqrt(t); if(w.y>uAGq.y && abs(w.z)<uAGq.z) lim=max(lim,uAGq.x); return a<lim; }`;
 const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos(6.2832*(h+vec3(0.0,0.33,0.67))); }`;
 export function patchMaterial(m, kind, U, ref) {
   m.onBeforeCompile = (sh) => {
@@ -60,7 +63,7 @@ export function patchMaterial(m, kind, U, ref) {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp;
+      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
       ${zoneGLSL(kind)}`)

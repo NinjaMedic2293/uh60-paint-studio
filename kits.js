@@ -208,11 +208,12 @@ export function buildBifilar(M, hub = [1.63, 0], y = 3.98) {
 // Gimbaled searchlight (Trakkabeam-style) on a bracket outside the pilot's (right) door, with a real spot light
 export function buildSearchlight(M) {
   const g = new THREE.Group();
-  const br = mesh(new RoundedBoxGeometry(0.12, 0.30, 0.10, 2, 0.02), M.darkMetal, P(2.90, 1.32, 1.42)); g.add(br);
-  const fork = mesh(new THREE.TorusGeometry(0.13, 0.02, 8, 24, Math.PI), M.darkMetal, P(2.90, 1.16, 1.50), [0, Math.PI / 2, Math.PI]); g.add(fork);
-  const head = latheX([[0, 0], [0.10, 0], [0.12, 0.04], [0.12, 0.20], [0.13, 0.22], [0, 0.22]], M.mission); head.position.copy(P(2.98, 1.12, 1.50)); g.add(head);
-  const lamp = mesh(new THREE.CircleGeometry(0.115, 28), M.lamp, P(2.75, 1.12, 1.50), [0, Math.PI / 2, 0]); g.add(lamp);
-  const spot = new THREE.SpotLight('#fff3dc', 0, 60, 0.22, 0.4, 1.2); spot.position.copy(P(2.73, 1.12, 1.50)); spot.target.position.copy(P(-6, 0, 3.5)); spot.castShadow = false;
+  // per user MH-60T photos: large gimbaled head low on the right forward fuselage, under the cockpit door
+  const br = mesh(new RoundedBoxGeometry(0.16, 0.22, 0.16, 2, 0.03), M.darkMetal, P(2.30, 0.86, 1.18)); g.add(br);
+  const fork = mesh(new THREE.TorusGeometry(0.19, 0.025, 8, 24, Math.PI), M.darkMetal, P(2.30, 0.70, 1.30), [0, Math.PI / 2, Math.PI]); g.add(fork);
+  const head = latheX([[0, 0], [0.15, 0], [0.17, 0.05], [0.17, 0.28], [0.18, 0.31], [0, 0.31]], M.mission); head.position.copy(P(2.40, 0.64, 1.30)); g.add(head);
+  const lamp = mesh(new THREE.CircleGeometry(0.165, 32), M.lamp, P(2.085, 0.64, 1.30), [0, Math.PI / 2, 0]); g.add(lamp);
+  const spot = new THREE.SpotLight('#fff3dc', 0, 60, 0.22, 0.4, 1.2); spot.position.copy(P(2.07, 0.64, 1.30)); spot.target.position.copy(P(-6, 0, 3.5)); spot.castShadow = false;
   g.add(spot, spot.target); g.userData.spot = spot; g.userData.lamp = M.lamp; g.name = 'searchlight';
   return g;
 }
@@ -227,4 +228,16 @@ export function buildProbe(M, side = 'right', variant = 'mh60m') {
   const c = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.10, 24), M.darkMetal, P(1.6, 0.86, s * 1.12), [0, 0, Math.PI / 2]); g.add(c);
   const f = mesh(new RoundedBoxGeometry(1.0, 0.34, 0.30, 4, 0.08), M.probe, P(2.8, 0.92, s * 1.30)); g.add(f);
   g.name = 'refuel-probe'; g.userData.label = 'Air-refuelling probe'; return g;
+}
+
+// ESSS stub wings with one external fuel tank per side (MH-60T option)
+export function buildTanks(M) {
+  const g = new THREE.Group(); g.name = 'tanks'; g.userData.label = 'ESSS stubs + external fuel tanks';
+  for (const s of [1, -1]) {
+    const st = mesh(new RoundedBoxGeometry(0.50, 0.10, 0.85, 3, 0.04), M.tank, P(5.35, 1.95, s * 1.62), [s * 0.35, 0, 0]); g.add(st);
+    const py = mesh(new RoundedBoxGeometry(0.40, 0.30, 0.08, 2, 0.02), M.darkMetal, P(5.35, 1.66, s * 1.98)); g.add(py);
+    const t = latheX([[0, 0], [0.12, 0.02], [0.22, 0.12], [0.28, 0.35], [0.29, 0.8], [0.29, 1.7], [0.27, 2.1], [0.18, 2.4], [0, 2.5]], M.tank, 40);
+    t.position.copy(P(6.65, 1.30, s * 1.98)); t.castShadow = true; g.add(t);
+  }
+  return g;
 }

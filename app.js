@@ -4,7 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHeli, GROUP, removeRotorCap } from './model.js';
 import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
 import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS } from './paint.js';
-import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, P } from './kits.js';
+import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, buildTanks, P } from './kits.js';
 import { buildDecals } from './decals.js';
 import { setupPaintTools } from './planes.js';
 
@@ -46,6 +46,7 @@ const fus = mats[GROUP.fuselage];
 const KM = kitMaterials(); const KITS = buildKits(KM);
 for (const k in KITS) { KITS[k].visible = false; scene.add(KITS[k]); }
 const HOIST = buildHoist(KM); scene.add(HOIST);
+KM.tank = KM.hoist.clone(); const TANKS = buildTanks(KM); scene.add(TANKS);
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
@@ -65,7 +66,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   s.planes = s.planes || []; s.regions = s.regions || []; s.panels = s.panels || {}; TOOLS.sync(false);
   glassMats.forEach(m => { m.color.copy(lin(s.colors.glass)); });
   for (const k in KITS) KITS[k].visible = (k === s.nose);
-  HOIST.visible = !!s.hoist;
+  HOIST.visible = !!s.hoist; TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors));
   const pk = s.probeSide + '|' + s.nose;
   if (pk !== probeKey) { if (PROBE) scene.remove(PROBE); PROBE = buildProbe(KM, s.probeSide, s.nose); scene.add(PROBE); probeKey = pk; }
   PROBE.visible = !!s.probe; KM.probe.color.copy(lin(s.colors.mission)); KM.probe.roughness = s.finish;
@@ -127,14 +128,14 @@ for (const [name, v] of Object.entries(VIEWS)) { const b = document.createElemen
 $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="color" data-z="${k}"><span>${l}</span></div>`).join('');
 function syncUI() {
   TOOLS.sync(true);
-  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
+  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
   $('finish').value = S.finish; ['tail', 'program', 'logo'].forEach(k => $(k).value = S[k] || '');
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
 $('preset').onchange = e => { const tail = S.tail; S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };
 $('nose').onchange = e => { S.nose = e.target.value; S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); };
 $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
-['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
+['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
 ['tail', 'program', 'logo'].forEach(k => $(k).onchange = e => { S[k] = e.target.value; apply(S); });
 document.querySelectorAll('[data-z]').forEach(i => i.oninput = () => { S.colors[i.dataset.z] = i.value; apply(S); });
