@@ -24,7 +24,7 @@ export const MAXP = 8, MAXR = 8;
 export const AG = [1.40, 0.80, 1.78, 2.25];
 export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
-  const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
+  const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uNac: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
     // anti-glare break (re-derived from MH-60T photos): x = a of the vertical break just ahead of the cockpit-door front frame/hinges,
     // y = door-window sill height where it turns to follow the windscreen rear pillar, z = aft slope of that pillar (m a per m y),
     // w = windscreen top / roof line height; above it the break holds at the windscreen top edge
@@ -63,7 +63,7 @@ export function patchMaterial(m, kind, U, ref) {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
+      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
       ${zoneGLSL(kind)}`)
@@ -88,7 +88,12 @@ export function patchMaterial(m, kind, U, ref) {
           if(pc.a>1.5) col=mix(col,vec3(0.05,0.75,1.0),0.45); }
         // layer 4: MH-60T anti-glare on top, always matte
         if(uAG>0.5 && agf(vW)){ col=uC[${ZI('antiglare')}]; agM=1.0; }
-      }` : ''}
+      }
+      // layer 5: engine nacelle inlet lip/face and exhaust (IR suppressor) opening, flat black (MH-60T 6008/6029/6019 photos)
+      if(uNac>0.5){ float a=${glsl(B.NX)}-vW.x, az=abs(vW.z); vec3 nW=normalize(cross(dFdx(vW),dFdy(vW))); if(dot(nW,cameraPosition-vW)<0.0) nW=-nW;
+        bool inl = a>3.95 && a<4.95 && vW.y>2.35 && vW.y<3.0 && az>0.62 && az<1.22;
+        bool exh = a>5.95 && a<7.7 && vW.y>2.15 && vW.y<3.0 && az>0.6 && az<1.65;
+        if((inl && (pm<0.5 || nW.x>0.55)) || (exh && (pm<0.5 || nW.x<-0.45))){ col=uC[${ZI('nacelle')}]; pm=1.0; agM=1.0; lum=min(lum,1.0); } }` : ''}
       vec3 paint=col*clamp(mix(1.0,lum,0.85),0.45,1.45);
       if(uDbg>0.5 && z>=0) paint=dbgC(z)*clamp(lum,0.6,1.2);
       diffuseColor.rgb*=mix(tx.rgb,paint,pm); agM*=pm;`)

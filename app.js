@@ -50,7 +50,7 @@ const fus = mats[GROUP.fuselage];
 const KM = kitMaterials(); const KITS = buildKits(KM);
 for (const k in KITS) { KITS[k].visible = false; scene.add(KITS[k]); }
 const HOIST = buildHoist(KM); scene.add(HOIST);
-KM.tank = KM.hoist.clone(); const TANKS = buildTanks(KM); scene.add(TANKS);
+KM.tank = KM.hoist.clone(); KM.tankCap = new THREE.MeshPhysicalMaterial({ color: '#121212', roughness: 0.95, metalness: 0, clearcoat: 0 }); const TANKS = buildTanks(KM); scene.add(TANKS);
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
@@ -65,15 +65,15 @@ const clone = o => JSON.parse(JSON.stringify(o));
 let S = clone(PRESETS[0]);
 const lin = hex => new THREE.Color(hex); // Color() from hex converts sRGB -> linear working space
 function apply(s, { rebuildDecals = true } = {}) {
-  ZKEYS.forEach((k, i) => U.uC.value[i].copy(lin(s.colors[k] || '#ff00ff')));
-  U.uAG.value = s.antiglare ? 1 : 0; U.uST.value = s.stripe ? 1 : 0;
+  ZKEYS.forEach((k, i) => U.uC.value[i].copy(lin(s.colors[k] || ({ nacelle: '#121212', tankcap: '#121212' })[k] || '#ff00ff')));
+  U.uAG.value = s.antiglare ? 1 : 0; U.uNac.value = s.nacelles ? 1 : 0; U.uST.value = s.stripe ? 1 : 0;
   fus.roughness = s.finish; fus.clearcoat = 0.45 * (1 - s.finish);
   KM.mission.color.copy(lin(s.colors.mission)); KM.radome.color.copy(lin(s.colors.mission)); KM.dome.color.copy(lin(s.colors.mission)).multiplyScalar(0.8); KM.hoist.color.copy(lin(s.colors.hoist));
   KM.nose.color.copy(lin(s.antiglare ? s.colors.antiglare : s.colors.nose)); KM.nose.roughness = s.antiglare ? 0.95 : s.finish; KM.nose.clearcoat = s.antiglare ? 0 : 0.3;
   s.planes = s.planes || []; s.regions = s.regions || []; s.panels = s.panels || {}; TOOLS.sync(false);
   glassMats.forEach(m => { m.color.copy(lin(s.colors.glass)); });
   for (const k in KITS) KITS[k].visible = (k === s.nose);
-  HOIST.visible = !!s.hoist; TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors));
+  HOIST.visible = !!s.hoist; TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
   const pk = s.probeSide + '|' + s.nose;
   if (pk !== probeKey) { if (PROBE) scene.remove(PROBE); PROBE = buildProbe(KM, s.probeSide, s.nose); scene.add(PROBE); probeKey = pk; }
   PROBE.visible = !!s.probe; KM.probe.color.copy(lin(s.colors.mission)); KM.probe.roughness = s.finish;
@@ -136,14 +136,14 @@ for (const [name, v] of Object.entries(VIEWS)) { const b = document.createElemen
 $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="color" data-z="${k}"><span>${l}</span></div>`).join('');
 function syncUI() {
   TOOLS.sync(true);
-  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
+  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
   $('finish').value = S.finish; migrate(S); LET?.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
 $('preset').onchange = e => { S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };
 $('nose').onchange = e => { S.nose = e.target.value; S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); };
 $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
-['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
+['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
 document.querySelectorAll('[data-z]').forEach(i => i.oninput = () => { S.colors[i.dataset.z] = i.value; apply(S); });
 $('labelsT').onchange = e => { showLabels = e.target.checked; needs = true; };
