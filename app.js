@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadHeli, GROUP } from './model.js';
+import { loadHeli, GROUP, removeRotorCap } from './model.js';
 import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
 import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS } from './paint.js';
-import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, P } from './kits.js';
+import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, P } from './kits.js';
 import { buildDecals } from './decals.js';
+import { setupPaintTools } from './planes.js';
 
 const q = new URLSearchParams(location.search);
 const SHOT = q.has('shot'); if (SHOT) document.body.classList.add('shot');
@@ -32,6 +33,7 @@ controls.minDistance = 2; controls.maxDistance = 80; controls.maxPolarAngle = Ma
 const { holder, mesh } = await loadHeli();
 scene.add(holder);
 mesh.castShadow = mesh.receiveShadow = true;
+window.__capTris = removeRotorCap(mesh, mesh.geometry.groups.findIndex(g => g.materialIndex === GROUP.mainRotor));
 const U = zoneUniforms();
 const mats = mesh.material;
 const kindOf = { [GROUP.fuselage]: 0, [GROUP.mainRotor]: 1, [GROUP.tailRotor]: 2 };
@@ -45,8 +47,10 @@ const KM = kitMaterials(); const KITS = buildKits(KM);
 for (const k in KITS) { KITS[k].visible = false; scene.add(KITS[k]); }
 const HOIST = buildHoist(KM); scene.add(HOIST);
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
+scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
 let PROBE = null, probeKey = '';
+const TOOLS = setupPaintTools({ U, scene, camera, renderer, controls, mesh, fusMatIndex: GROUP.fuselage, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
 
 // ---------- scheme state
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -57,7 +61,8 @@ function apply(s, { rebuildDecals = true } = {}) {
   U.uAG.value = s.antiglare ? 1 : 0; U.uST.value = s.stripe ? 1 : 0;
   fus.roughness = s.finish; fus.clearcoat = 0.45 * (1 - s.finish);
   KM.mission.color.copy(lin(s.colors.mission)); KM.radome.color.copy(lin(s.colors.mission)); KM.dome.color.copy(lin(s.colors.mission)).multiplyScalar(0.8); KM.hoist.color.copy(lin(s.colors.hoist));
-  KM.nose.color.copy(lin(s.antiglare ? s.colors.antiglare : s.colors.nose)); KM.nose.roughness = s.finish;
+  KM.nose.color.copy(lin(s.antiglare ? s.colors.antiglare : s.colors.nose)); KM.nose.roughness = s.antiglare ? 0.95 : s.finish; KM.nose.clearcoat = s.antiglare ? 0 : 0.3;
+  s.planes = s.planes || []; s.regions = s.regions || []; s.panels = s.panels || {}; TOOLS.sync(false);
   glassMats.forEach(m => { m.color.copy(lin(s.colors.glass)); });
   for (const k in KITS) KITS[k].visible = (k === s.nose);
   HOIST.visible = !!s.hoist;
@@ -67,7 +72,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   KITS.mh60m.traverse(o => { if (o.userData.lidar) o.visible = !!s.lidar; });
   LIGHT.visible = s.light || s.nose === 'mh60t';
   LIGHT.userData.spot.intensity = s.light ? 600 : 0; KM.lamp.emissiveIntensity = s.light ? 6 : 0;
-  const key = JSON.stringify([s.tail, s.program, s.logo, s.cross, s.colors.text, s.colors.cross]);
+  const key = JSON.stringify([s.tail, s.program, s.logo, s.cross, s.colors.text, s.colors.cross, s.star]);
   if (rebuildDecals && key !== decalKey) { if (decals) { scene.remove(decals); decals.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
     decals = buildDecals(mesh, s); scene.add(decals); decalKey = key; }
   needs = true;
@@ -121,6 +126,7 @@ opt($('preset'), PRESETS.map((p, i) => [i, p.name])); opt($('nose'), NOSES);
 for (const [name, v] of Object.entries(VIEWS)) { const b = document.createElement('button'); b.textContent = name; b.onclick = () => setCam(v[0], v[1], v[2], v[3]); $('views').appendChild(b); }
 $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="color" data-z="${k}"><span>${l}</span></div>`).join('');
 function syncUI() {
+  TOOLS.sync(true);
   $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
   $('finish').value = S.finish; ['tail', 'program', 'logo'].forEach(k => $(k).value = S[k] || '');
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
@@ -153,7 +159,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { TOOLS, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';

@@ -115,32 +115,31 @@ export function buildKits(M) {
     const part = (name, label, ...objs) => { const p = new THREE.Group(); p.name = name; p.userData.label = label; objs.forEach(o => p.add(o)); g.add(p); return p; };
     // Silent Knight TF/TA radome: blunt, matte, taller than wide, sits on the nose and stands proud of the nose top
     const rd = latheX([[0, 0], [0.27, 0], [0.30, 0.10], [0.31, 0.26], [0.29, 0.40], [0.24, 0.52], [0.15, 0.60], [0, 0.63]], M.radome, 56);
-    rd.scale.set(1, 1.08, 0.88); rd.position.copy(P(0.30, 1.22, 0)); rd.castShadow = true;
-    const rdSeam = mesh(new THREE.TorusGeometry(0.27, 0.01, 8, 48), M.darkMetal, P(0.30, 1.22, 0), [0, Math.PI / 2, 0]); rdSeam.scale.set(1, 1.08, 0.88);
-    const rdBase = mesh(new RoundedBoxGeometry(0.34, 0.62, 0.52, 4, 0.10), M.mission, P(0.40, 1.18, 0));
+    rd.scale.set(1, 0.71, 0.68); rd.position.copy(P(0.30, 1.33, 0)); rd.castShadow = true;
+    const rdSeam = mesh(new THREE.TorusGeometry(0.27, 0.01, 8, 48), M.darkMetal, P(0.30, 1.33, 0), [0, Math.PI / 2, 0]); rdSeam.scale.set(1, 0.71, 0.68);
+    const rdBase = mesh(new RoundedBoxGeometry(0.40, 0.70, 0.62, 4, 0.12), M.mission, P(0.44, 1.20, 0));
     const hood = mesh(new RoundedBoxGeometry(0.80, 0.22, 0.50, 4, 0.10), M.mission, P(0.80, 1.50, 0), [0, 0, -0.22]);
     part('apq187-radome', 'AN/APQ-187 Silent Knight TF/TA radar (graphic: "AN/ALQ-187")', rd, rdSeam, rdBase, hood);
     // AN/ZSQ-2 EO targeting sensor: rounded housing directly below the radome with a gimballed ball and window
-    const zH = mesh(new RoundedBoxGeometry(0.40, 0.22, 0.44, 4, 0.08), M.mission, P(0.10, 0.82, 0));
-    const zB = mesh(new THREE.SphereGeometry(0.23, 40, 28), M.mission, P(0.02, 0.58, 0));
-    const zW = mesh(new RoundedBoxGeometry(0.03, 0.17, 0.19, 2, 0.02), M.lens, P(-0.20, 0.58, 0.04));
-    const zL = mesh(new THREE.CircleGeometry(0.04, 24), M.lensGreen, P(-0.19, 0.62, -0.12), [0, Math.PI / 2, 0]);
+    const zH = mesh(new RoundedBoxGeometry(0.46, 0.24, 0.60, 4, 0.08), M.mission, P(0.14, 0.88, 0));
+    const zB = mesh(new THREE.SphereGeometry(0.27, 40, 28), M.mission, P(0.02, 0.62, 0));
+    const zW = mesh(new RoundedBoxGeometry(0.03, 0.20, 0.22, 2, 0.02), M.lens, P(-0.24, 0.62, 0.05));
+    const zL = mesh(new THREE.CircleGeometry(0.04, 24), M.lensGreen, P(-0.23, 0.66, -0.14), [0, Math.PI / 2, 0]);
     part('zsq2-turret', 'AN/ZSQ-2 electro-optical targeting sensor', zH, zB, zW, zL);
     // DVE LWIR sensor: small forward-looking pod beside the radome (aircraft right)
-    const lw = latheX([[0, 0], [0.075, 0], [0.075, 0.20], [0.06, 0.25], [0, 0.255]], M.mission);
-    lw.position.copy(P(0.15, 1.05, 0.34)); lw.castShadow = true;
-    const lwL = mesh(new THREE.CircleGeometry(0.045, 20), M.lens, P(-0.106, 1.05, 0.34), [0, Math.PI / 2, 0]);
-    const lwS = mesh(new RoundedBoxGeometry(0.16, 0.10, 0.08, 2, 0.02), M.mission, P(0.20, 1.05, 0.26));
+    const lw = mesh(new RoundedBoxGeometry(0.40, 0.25, 0.29, 4, 0.05), M.mission, P(0.36, 0.79, 0.50)); lw.castShadow = true;
+    const lwL = mesh(new THREE.CircleGeometry(0.07, 20), M.lens, P(0.155, 0.80, 0.50), [0, Math.PI / 2, 0]);
+    const lwS = mesh(new RoundedBoxGeometry(0.04, 0.17, 0.21, 2, 0.02), M.metal, P(0.165, 0.79, 0.50));
     part('dve-lwir', 'DVE LWIR sensor', lw, lwL, lwS);
     // DVE LIDAR: box fairing low on the left chin (toggle; "not installed" in the graphic's photo)
-    const ld = mesh(new RoundedBoxGeometry(0.30, 0.26, 0.30, 4, 0.05), M.mission, P(0.32, 0.80, -0.40));
-    const ldW = mesh(new RoundedBoxGeometry(0.02, 0.16, 0.20, 2, 0.02), M.lens, P(0.165, 0.80, -0.40));
+    const ld = mesh(new RoundedBoxGeometry(0.40, 0.43, 0.45, 4, 0.05), M.mission, P(0.36, 0.66, -0.58));
+    const ldW = mesh(new RoundedBoxGeometry(0.02, 0.26, 0.30, 2, 0.02), M.lens, P(0.155, 0.66, -0.58));
     const lidar = part('dve-lidar', 'DVE LIDAR sensor (toggle)', ld, ldW); lidar.userData.lidar = true;
     // AN/AAQ-24B(V)25 advanced threat warner: small round domes on both nose cheeks
     const aaq = [];
-    for (const s of [1, -1]) { const h = mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.06, 24), M.mission, P(0.80, 1.42, s * 0.74), [Math.PI / 2, 0, -s * 0.0]);
+    for (const s of [1, -1]) { const h = mesh(new THREE.CylinderGeometry(0.10, 0.105, 0.07, 24), M.mission, P(0.80, 1.42, s * 0.90), [Math.PI / 2, 0, -s * 0.0]);
       h.lookAt(P(0.2, 1.5, s * 2.0)); h.rotateX(Math.PI / 2);
-      const d = mesh(new THREE.SphereGeometry(0.07, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), M.dome, P(0.80, 1.42, s * 0.74)); d.lookAt(P(0.2, 1.5, s * 2.0)); d.rotateX(Math.PI / 2); d.translateY(0.03);
+      const d = mesh(new THREE.SphereGeometry(0.095, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), M.dome, P(0.80, 1.42, s * 0.90)); d.lookAt(P(0.2, 1.5, s * 2.0)); d.rotateX(Math.PI / 2); d.translateY(0.03);
       aaq.push(h, d); }
     part('aaq24-mws', 'AN/AAQ-24B(V)25 advanced threat warner sensor', ...aaq);
     // AN/ALQ-211(V)7 SIRFC quadrant receive antenna: flat cheek bump below the windscreen
@@ -149,7 +148,7 @@ export function buildKits(M) {
     part('alq211-quadrant', 'AN/ALQ-211(V)7 SIRFC quadrant receive antenna', ...sq);
     // AN/ALQ-162(V)6 Shadowbox SPJ: three small domes on the roof above the windscreen
     const sb = [mesh(new RoundedBoxGeometry(0.22, 0.05, 0.54, 2, 0.02), M.mission, P(2.15, 2.62, 0))];
-    for (const z of [-0.19, 0, 0.19]) sb.push(mesh(new THREE.SphereGeometry(0.06, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.dome, P(2.10, 2.645, z)));
+    for (const z of [-0.175, 0, 0.175]) sb.push(mesh(new THREE.SphereGeometry(0.078, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.dome, P(2.10, 2.645, z)));
     part('alq162-shadowbox', 'AN/ALQ-162(V)6 Shadowbox self-protection jammer', ...sb);
     // forward cabin side: strut carrying the SIRFC detect-band antenna (box) and AN/AVR-2B laser warner (round head)
     const ms = [], av = [];
@@ -170,15 +169,41 @@ export function buildKits(M) {
   return K;
 }
 // Rescue hoist above the right cabin door (boom, drum, hook)
+// External rescue hoist (HH-60 / UH-60 class, Goodrich 44301-style), above the forward edge of the RIGHT cabin door.
+// Mounted on the cabin-roof shoulder (fuselage measured at a=3.4-3.8: side skin top y~2.25 z~1.28, roof shoulder y~2.30 z~0.85).
+// Sizes from the user's HH-60W front photo as ratios of one windscreen pane (~0.80 m): boom tube 0.12, head 0.30 w x 0.40 h,
+// head centre ~0.30 m outboard of the cabin side and ~0.75 m above the shoulder; hook ~0.12 m.
 export function buildHoist(M) {
-  const g = new THREE.Group();
-  const base = mesh(new RoundedBoxGeometry(0.5, 0.18, 0.34, 3, 0.05), M.hoist, P(3.45, 2.92, 1.02)); g.add(base);
-  g.add(tube([P(3.45, 2.95, 1.05), P(3.45, 3.02, 1.30), P(3.45, 2.94, 1.52)], 0.055, 0.05, M.hoist));
-  const drum = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.55, 28), M.hoist, P(3.45, 2.86, 1.56), [0, 0, Math.PI / 2]); g.add(drum);
-  const cap = mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.04, 28), M.darkMetal, P(3.17, 2.86, 1.56), [0, 0, Math.PI / 2]); g.add(cap);
-  const cable = mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.35, 6), M.darkMetal, P(3.45, 2.6, 1.6)); g.add(cable);
-  const hook = mesh(new THREE.TorusGeometry(0.04, 0.012, 8, 20, Math.PI * 1.5), M.darkMetal, P(3.45, 2.40, 1.6)); g.add(hook);
-  g.name = 'hoist'; return g;
+  const g = new THREE.Group(); const A = 3.55;
+  // mounting saddle: sits on the roof shoulder and wraps down onto the side skin (sunk 2 cm into the skin so there is no gap)
+  g.add(mesh(new RoundedBoxGeometry(0.56, 0.12, 0.50, 3, 0.04), M.hoist, P(A, 2.33, 1.04)));
+  g.add(mesh(new RoundedBoxGeometry(0.50, 0.26, 0.08, 3, 0.03), M.hoist, P(A, 2.20, 1.255)));
+  g.add(mesh(new RoundedBoxGeometry(0.30, 0.20, 0.30, 3, 0.06), M.hoist, P(A, 2.46, 1.08)));
+  // curved boom: up from the saddle, out over the door
+  g.add(tube([P(A, 2.42, 1.08), P(A, 2.75, 1.16), P(A, 2.98, 1.36), P(A, 3.05, 1.56)], 0.065, 0.055, M.hoist));
+  // hoist head: drum housing, axis fore-aft, with motor end cap and lower guide
+  const head = mesh(new RoundedBoxGeometry(0.42, 0.40, 0.30, 4, 0.12), M.hoist, P(A, 3.02, 1.60)); g.add(head);
+  g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.10, 24), M.darkMetal, P(A - 0.24, 3.04, 1.60), [0, 0, Math.PI / 2]));
+  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.10, 12), M.darkMetal, P(A, 2.78, 1.62)));
+  // cable + hook (stowed short)
+  g.add(mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.16, 6), M.darkMetal, P(A, 2.66, 1.62)));
+  g.add(mesh(new RoundedBoxGeometry(0.06, 0.12, 0.06, 2, 0.02), M.darkMetal, P(A, 2.54, 1.62)));
+  g.add(mesh(new THREE.TorusGeometry(0.045, 0.012, 8, 20, Math.PI * 1.6), M.darkMetal, P(A, 2.43, 1.62), [0, Math.PI / 2, 0]));
+  g.name = 'hoist'; g.userData.label = 'External rescue hoist'; return g;
+}
+// Main-rotor bifilar vibration absorber: 4 arms at 45 deg to the blades on top of the hub, each with a pendulum weight.
+// (Replaces the solid dome in the source model, which is not a UH-60 part.)
+export function buildBifilar(M, hub = [1.63, 0], y = 3.98) {
+  const g = new THREE.Group(); g.position.set(hub[0], y, hub[1]);
+  g.add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.22, 24), M.darkMetal, new THREE.Vector3(0, 0.02, 0)));
+  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 16), M.darkMetal, new THREE.Vector3(0, 0.15, 0)));
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + i * Math.PI / 2, c = Math.cos(a), s = Math.sin(a);
+    const arm = mesh(new RoundedBoxGeometry(0.46, 0.07, 0.12, 2, 0.025), M.darkMetal, new THREE.Vector3(c * 0.33, 0.05, s * 0.33), [0, -a, 0]); g.add(arm);
+    g.add(mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.09, 24), M.darkMetal, new THREE.Vector3(c * 0.58, 0.07, s * 0.58)));
+    g.add(mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.09, 24), M.darkMetal, new THREE.Vector3(c * 0.58, -0.04, s * 0.58)));
+  }
+  g.name = 'bifilar'; return g;
 }
 // Gimbaled searchlight (Trakkabeam-style) on a bracket outside the pilot's (right) door, with a real spot light
 export function buildSearchlight(M) {

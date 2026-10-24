@@ -9,7 +9,7 @@ export const ZONES = [
 ];
 const base = { upper: '#4a4f2a', belly: '#4a4f2a', stripe: '#4a4f2a', nose: '#4a4f2a', antiglare: '#141414', doors: '#4a4f2a', cowl: '#42472a', boom: '#4a4f2a', band: '#4a4f2a', fin: '#4a4f2a', stab: '#4a4f2a', blades: '#2b2b2b', tips: '#f2d21b', gear: '#3a3a3a', hoist: '#4a4f2a', mission: '#1e1f20', glass: '#2c3e50', text: '#1b1b1b', cross: '#c8102e' };
 export const PROBE_NOSES = ['hh60g', 'hh60w', 'mh60m'];
-const mk = (name, c, extra = {}) => ({ name, colors: { ...base, ...c }, tail: '26319', program: '', logo: '', nose: 'uh60l', antiglare: false, stripe: false, cross: false, hoist: true, light: false, finish: 0.55, probeSide: 'right', lidar: false, ...extra, probe: extra.probe ?? PROBE_NOSES.includes(extra.nose) });
+const mk = (name, c, extra = {}) => ({ name, colors: { ...base, ...c }, tail: '26319', program: '', logo: '', nose: 'uh60l', antiglare: false, stripe: false, cross: false, hoist: true, light: false, finish: 0.55, probeSide: 'right', lidar: false, planes: [], regions: [], panels: {}, star: null, ...extra, probe: extra.probe ?? PROBE_NOSES.includes(extra.nose) });
 const all = (c) => Object.fromEntries(['upper', 'belly', 'stripe', 'nose', 'doors', 'cowl', 'boom', 'band', 'fin', 'stab', 'hoist'].map(k => [k, c]));
 export const PRESETS = [
   mk('Army Olive Drab (FS 34031)', { ...all('#383c2c'), cowl: '#34382a' }, { tail: '26319', program: 'UNITED STATES ARMY', finish: 0.8 }),
@@ -22,4 +22,10 @@ export const PRESETS = [
   mk('All-black 160th SOAR (MH-60M)', { ...all('#1d1f1e'), cowl: '#202221', blades: '#1a1a1a', tips: '#2a2a2a', gear: '#1a1a1a', mission: '#161718', text: '#2c2d2c' }, { nose: 'mh60m', probeSide: 'left', tail: '', program: '', finish: 0.85 }),
   mk('HH-60W gray (FS 36118)', { ...all('#596066'), mission: '#202224', tips: '#e0e0e0', text: '#2a2c2e' }, { nose: 'hh60w', tail: '4521', program: '', finish: 0.75 }),
 ];
+// Texas flag, built only from paint-break planes: P1 vertical = aft end of the blue field, P2 horizontal = white/red split.
+PRESETS.push(mk('Texas flag (paint-break planes demo)', { ...all('#ffffff'), antiglare: '#111111', tips: '#ffffff', gear: '#3a3a3a', mission: '#151515', text: '#111111', hoist: '#ffffff' },
+  { nose: 'uh60l', antiglare: true, hoist: false, tail: 'N836TX', program: '', finish: 0.35,
+    planes: [{ name: 'Blue field aft edge', kind: 'vertical', a: 4.10, y: 1.6, z: 0, yaw: 0, pitch: 0 }, { name: 'White / red split', kind: 'horizontal', a: 8, y: 1.55, z: 0, yaw: 0, pitch: 2.5 }],
+    regions: [{ name: 'Blue', color: '#002868', req: [1, 0] }, { name: 'White', color: '#ffffff', req: [-1, 1] }, { name: 'Red', color: '#bf0a30', req: [-1, -1] }],
+    star: { a: 3.0, y: 1.62, size: 0.75, color: '#ffffff' } }));
 export const NOSES = [['uh60l', 'UH-60L standard'], ['hh60g', 'HH-60G Pave Hawk'], ['mh60t', 'MH-60T Jayhawk'], ['hh60w', 'HH-60W Jolly Green II'], ['mh60m', 'MH-60M (160th SOAR)']];

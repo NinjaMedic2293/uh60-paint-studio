@@ -18,8 +18,17 @@ export const BREAKS = {
   trHub: [-8.36, 3.91], trR: 1.52, trTip: 0.20,
 };
 const glsl = (n) => n.toFixed(4);
+export const MAXP = 8, MAXR = 8;
+export const AG = [1.30, 1.95, 0.74, 2.45];
 export function zoneUniforms() {
-  const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 } };
+  const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
+    // anti-glare break (re-derived from MH-60T photos): x = a of the vertical break just ahead of the cockpit-door front frame/hinges,
+    // y = door-window sill height where it turns to follow the windscreen rear pillar, z = aft slope of that pillar (m a per m y),
+    // w = windscreen top / roof line height; above it the break holds at the windscreen top edge
+    uAGp: { value: new THREE.Vector4(...AG) },
+    uPN: { value: 0 }, uPl: { value: Array.from({ length: MAXP }, () => new THREE.Vector4(0, 1, 0, -99)) },
+    uRN: { value: 0 }, uRS: { value: Array.from({ length: MAXR * 2 }, () => new THREE.Vector4()) }, uRC: { value: Array.from({ length: MAXR }, () => new THREE.Color()) },
+    uPanId: { value: null }, uPanC: { value: null }, uPanOn: { value: 0 } };
   return u;
 }
 const B = BREAKS;
@@ -34,7 +43,6 @@ function zoneGLSL(kind) {
     if(a>${glsl(B.stabA)} && az>0.42 && y<2.6) return ${ZI('stab')};
     if(a>2.7 && a<4.25 && az>0.95 && y<1.05) return ${ZI('gear')};
     if(a>11.3 && a<12.8 && y<0.95 && az<0.35) return ${ZI('gear')};
-    if(uAG>0.5 && a<${glsl(B.agA)} + 0.10*smoothstep(2.2,2.7,y)) return ${ZI('antiglare')};
     if(a<${glsl(B.noseA)} && y<1.62) return ${ZI('nose')};
     if(a>${glsl(B.boomA)}){ if(a>${glsl(B.band0)} && a<${glsl(B.band1)}) return ${ZI('band')}; return ${ZI('boom')}; }
     if(y>${glsl(B.cowlY)} && a>2.55) return ${ZI('cowl')};
@@ -44,6 +52,7 @@ function zoneGLSL(kind) {
     return ${ZI('upper')};
   }`;
 }
+const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float lim=uAGp.x + uAGp.z*clamp(w.y-uAGp.y,0.0,uAGp.w-uAGp.y); return a<lim; }`;
 const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos(6.2832*(h+vec3(0.0,0.33,0.67))); }`;
 export function patchMaterial(m, kind, U, ref) {
   m.onBeforeCompile = (sh) => {
@@ -51,7 +60,9 @@ export function patchMaterial(m, kind, U, ref) {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uAG,uST,uDbg,uRef; ${DBG}
+      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp;
+      uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
+      uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
       ${zoneGLSL(kind)}`)
       .replace('#include <map_fragment>', `
       vec4 tx=texture2D(map,vMapUv);
@@ -60,9 +71,26 @@ export function patchMaterial(m, kind, U, ref) {
       if(z<0) pm=0.0;
       float lum=dot(tx.rgb,vec3(.3,.59,.11))/uRef;
       vec3 col=uC[0]; for(int i=0;i<${ZKEYS.length};i++){ if(i==z) col=uC[i]; }
+      ${kind === 0 ? `
+      if(z>=0 && z!=${ZI('gear')}){
+        // layer 2: paint-break plane regions (later regions win). uRS holds a -1/0/+1 side requirement per plane.
+        for(int r=0;r<${MAXR};r++){ if(r>=uRN) break; bool ok=true;
+          for(int p=0;p<${MAXP};p++){ if(p>=uPN) break; float req=uRS[r*2+p/4][p%4]; float sd=dot(uPl[p].xyz,vW)-uPl[p].w;
+            if((req>0.5&&sd<0.0)||(req<-0.5&&sd>=0.0)) ok=false; }
+          if(ok) col=uRC[r]; }
+        // layer 3: individually painted panels (UV panel-ID map, split left/right by model z)
+        if(uPanOn>0.5){ float pid=floor(texture2D(uPanId,vMapUv).r*255.0+0.5); float sd=vW.z>0.0?1.0:0.0;
+          vec4 pc=texture2D(uPanC,vec2((pid+0.5)/256.0,(sd+0.5)/2.0));
+          if(mod(pc.a,2.0)>0.5) col=pc.rgb;
+          if(pc.a>1.5) col=mix(col,vec3(0.05,0.75,1.0),0.45); }
+        // layer 4: MH-60T anti-glare on top, always matte
+        if(uAG>0.5 && agf(vW)){ col=uC[${ZI('antiglare')}]; agM=1.0; }
+      }` : ''}
       vec3 paint=col*clamp(mix(1.0,lum,0.85),0.45,1.45);
       if(uDbg>0.5 && z>=0) paint=dbgC(z)*clamp(lum,0.6,1.2);
-      diffuseColor.rgb*=mix(tx.rgb,paint,pm);`);
+      diffuseColor.rgb*=mix(tx.rgb,paint,pm); agM*=pm;`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, 0.95, agM);')
+      .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\n#ifdef USE_CLEARCOAT\n material.clearcoat *= (1.0-agM);\n#endif\n material.specularF90 *= mix(1.0,0.35,agM);');
   };
   m.customProgramCacheKey = () => 'zone' + kind;
   m.needsUpdate = true;

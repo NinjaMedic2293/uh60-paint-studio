@@ -47,5 +47,18 @@ export function buildDecals(mesh, s) {
       o.renderOrder = 2; g.add(o);
     }
   }
+  if (s.star && s.star.size > 0) {
+    const t = starTexture(s.star.color || '#ffffff'); const st = s.star;
+    for (const side of [1, -1]) {
+      const geo = new DecalGeometry(mesh, P(st.a, st.y, side * 1.3), new THREE.Euler(0, side > 0 ? 0 : Math.PI, 0), new THREE.Vector3(st.size, st.size, 0.9));
+      const o = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.6 }));
+      o.renderOrder = 2; g.add(o);
+    }
+  }
   return g;
+}
+function starTexture(color) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.fillStyle = color; g.beginPath();
+  for (let i = 0; i < 10; i++) { const r = i % 2 ? 48 : 124, a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(128 + r * Math.cos(a), 134 + r * Math.sin(a)); }
+  g.closePath(); g.fill(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }

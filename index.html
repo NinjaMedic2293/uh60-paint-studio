@@ -19,6 +19,19 @@
     <label>Program name <input id="program" maxlength="28"></label>
     <label>Logo text <input id="logo" maxlength="20"></label>
   </section>
+  <section><h2>Panels</h2>
+    <div class="row"><label><input type="checkbox" id="panelMode" checked> Click to select panels</label><span id="selInfo"></span></div>
+    <div class="row"><input type="color" id="panelColor" value="#c8102e"><button id="paintSel">Paint selected</button><button id="clearSel">Reset selected</button><button id="mirrorSel">+ other side</button><button id="deselect">Deselect</button></div>
+  </section>
+  <section><h2>Paint-break planes</h2>
+    <div class="row"><button id="addV">+ Vertical</button><button id="addH">+ Horizontal</button><button id="addF">+ Free</button>
+      <label><input type="checkbox" id="showPlanes" checked> Show planes</label>
+      <select id="gizmoMode"><option value="translate">Gizmo: move</option><option value="rotate">Gizmo: rotate</option></select></div>
+    <div id="planes"></div>
+    <h3>Regions <button id="addR">+ Region</button></h3>
+    <p class="hint">A region is painted where every chosen plane condition holds (e.g. behind P1 AND above P2). Later regions win; painted panels and the anti-glare sit on top.</p>
+    <div id="regions"></div>
+  </section>
   <section><h2>Zone colours</h2><div id="zones"></div></section>
   <section><h2>Save / compare</h2>
     <div class="row"><input id="saveName" placeholder="Scheme name"><button id="save">Save</button></div>
