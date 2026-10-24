@@ -55,7 +55,7 @@ function zoneGLSL(kind) {
     return ${ZI('upper')};
   }`;
 }
-const NACD = `#define NAC_IY 2.68\n#define NAC_IZ 0.965\n#define NAC_IR 0.315\n#define NAC_IA0 4.22\n#define NAC_IA1 5.0\n#define NAC_IL 4.47\n#define NAC_DR 0.255\n#define NAC_EA 6.98\n`;
+const NACD = `#define NAC_IY 2.68\n#define NAC_IZ 0.965\n#define NAC_IR 0.315\n#define NAC_IA0 4.22\n#define NAC_IA1 5.0\n#define NAC_IL 4.56\n#define NAC_DR 0.255\n#define NAC_EA 6.98\n`;
 const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float t=clamp((w.y-uAGp.y)/(uAGp.w-uAGp.y),0.0,1.0); float lim=uAGp.x+(uAGp.z-uAGp.x)*sqrt(t); if(w.y>uAGq.y && abs(w.z)<uAGq.z) lim=max(lim,uAGq.x); return a<lim; }`;
 const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos(6.2832*(h+vec3(0.0,0.33,0.67))); }`;
 export function patchMaterial(m, kind, U, ref) {
