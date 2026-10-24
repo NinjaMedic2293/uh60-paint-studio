@@ -3,7 +3,7 @@
 <title>UH-60 3D Paint Studio</title><link rel="stylesheet" href="style.css">
 <script type="importmap">{"imports":{"three":"./lib/three/three.module.js","three/addons/":"./lib/three/addons/"}}</script>
 </head><body>
-<div id="view"><canvas id="c"></canvas><div id="split" hidden></div><div id="labels"></div><div id="loading">Loading model…</div></div>
+<div id="view"><canvas id="c"></canvas><div id="split" hidden></div><div id="markTip" hidden></div><div id="labels"></div><div id="loading">Loading model…</div></div>
 <aside id="ui">
   <h1>UH-60 3D Paint Studio</h1>
   <section><h2>Views</h2><div class="row" id="views"></div>
@@ -15,9 +15,16 @@
     <div class="row"><label><input type="checkbox" id="hoist"> Rescue hoist</label><label><input type="checkbox" id="light"> Searchlight on</label><label><input type="checkbox" id="cross"> Medical cross</label></div>
     <div class="row"><label><input type="checkbox" id="probe"> Refuelling probe</label><select id="probeSide"><option value="right">Probe on right</option><option value="left">Probe on left</option></select><label><input type="checkbox" id="lidar"> DVE LIDAR (MH-60M)</label><label><input type="checkbox" id="tanks"> ESSS fuel tanks</label></div>
     <label>Finish (gloss ↔ matte) <input type="range" id="finish" min="0.15" max="0.95" step="0.05"></label>
-    <label>Tail number <input id="tail" maxlength="12"></label>
-    <label>Program name <input id="program" maxlength="28"></label>
-    <label>Logo text <input id="logo" maxlength="20"></label>
+  </section>
+  <section><h2>Lettering &amp; markings</h2>
+    <p class="hint">The only text on the aircraft is what you add here (stock model lettering removed). Click <b>Place</b> then click the model; drag a mark across the surface; mouse-wheel over a mark resizes it (live inches), Shift+wheel rotates. Heights are real-world inches (model is 1:1, 19.76 m / 64 ft 10 in overall).</p>
+    <div class="row"><button id="addText">+ Text</button></div>
+    <div id="marks"></div>
+    <h3>FAA quick-start</h3>
+    <div class="row"><button id="faaN">N-number (12 in)</button><button id="faaR">RESTRICTED (3 in)</button><button id="faaX">EXPERIMENTAL (3 in)</button></div>
+    <p class="hint cfr"><b>14 CFR 45.29(b)(3)</b>: rotorcraft nationality and registration marks must be at least <b>12 in</b> high. <b>45.29(c)</b>: characters two-thirds as wide as high (“1” one-sixth; M and W may be as wide as high); <b>(d)</b> solid lines one-sixth as thick as the height; <b>(e)</b> spacing at least one-fourth of the character width. <b>45.27(a)</b>: displayed horizontally on both surfaces of the cabin, fuselage, boom or tail. <b>45.23(b)</b>: on limited, restricted, experimental or provisionally certificated aircraft, the applicable word near each entrance to the cabin, cockpit or pilot station, in letters <b>not less than 2 in nor more than 6 in</b> high. Source: <a href="https://www.ecfr.gov/current/title-14/chapter-I/subchapter-C/part-45" target="_blank" rel="noopener">eCFR 14 CFR part 45</a> (current to Oct 22, 2026; last amended 90 FR 35211, Jul 24, 2025). “FAA proportions” sets glyph widths and spacing per 45.29(c)/(e); stroke thickness follows the font. Check your own aircraft's certification basis.</p>
+    <h3>USCG-style graphics</h3>
+    <div class="row"><label><input type="checkbox" id="uscgJet"> JET INTAKE chevron + DANGER box</label><label><input type="checkbox" id="uscgRescue"> RESCUE arrows (cockpit doors)</label></div>
   </section>
   <section><h2>Panels</h2>
     <div class="row"><label><input type="checkbox" id="panelMode" checked> Click to select panels</label><span id="selInfo"></span></div>

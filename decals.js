@@ -23,10 +23,7 @@ export const SPOTS = {
 };
 export function buildDecals(mesh, s) {
   const g = new THREE.Group(); g.name = 'decals';
-  const items = [];
-  if (s.tail) items.push(['tail', s.tail]);
-  if (s.program) items.push(['program', s.program]);
-  if (s.logo) items.push(['logo', s.logo]);
+  const items = []; // text now lives in lettering.js (user-defined marks only)
   for (const [k, text] of items) {
     const sp = SPOTS[k]; const { t, aspect } = textTexture(text, s.colors.text);
     const w = sp.h * aspect * 1.0;

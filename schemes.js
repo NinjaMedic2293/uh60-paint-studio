@@ -29,3 +29,6 @@ PRESETS.push(mk('Texas flag (paint-break planes demo)', { ...all('#ffffff'), ant
     regions: [{ name: 'Blue', color: '#002868', req: [1, 0] }, { name: 'White', color: '#ffffff', req: [-1, 1] }, { name: 'Red', color: '#bf0a30', req: [-1, -1] }],
     star: { a: 3.0, y: 1.62, size: 0.75, color: '#ffffff' } }));
 export const NOSES = [['uh60l', 'UH-60L standard'], ['hh60g', 'HH-60G Pave Hawk'], ['mh60t', 'MH-60T Jayhawk'], ['hh60w', 'HH-60W Jolly Green II'], ['mh60m', 'MH-60M (160th SOAR)']];
+
+// no stock text: every preset starts with no lettering; users add their own (lettering.js)
+PRESETS.forEach(p => { p.tail = ''; p.program = ''; p.logo = ''; p.marks = []; });

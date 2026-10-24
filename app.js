@@ -4,6 +4,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHeli, GROUP, removeRotorCap } from './model.js';
 import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
 import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS } from './paint.js';
+import { loadFonts, createMarks, fuselageOnly, migrate, USCG, FAA, newText } from './lettering.js';
+import { setupLettering } from './lettering-ui.js';
 import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, buildTanks, P } from './kits.js';
 import { buildDecals } from './decals.js';
 import { setupPaintTools } from './planes.js';
@@ -40,6 +42,8 @@ const kindOf = { [GROUP.fuselage]: 0, [GROUP.mainRotor]: 1, [GROUP.tailRotor]: 2
 mesh.geometry.groups.forEach(gr => { const m = mats[gr.materialIndex]; const k = kindOf[gr.materialIndex];
   if (k !== undefined && m.map) { patchMaterial(m, k, U, textureRef(m.map, k)); m.clearcoat = 0.25; }
 });
+// stock lettering ('BLACK HAWK' x2) inpainted out of the fuselage atlas offline (OpenCV Telea, panel lines restored)
+{ const img = await new THREE.ImageLoader().loadAsync('model/fuselage_clean.png'); const fm = mats[GROUP.fuselage].map; fm.image = img; fm.needsUpdate = true; }
 const glassMats = mats.filter(m => m.transparent);
 const fus = mats[GROUP.fuselage];
 // ---------- kits
@@ -50,8 +54,11 @@ KM.tank = KM.hoist.clone(); const TANKS = buildTanks(KM); scene.add(TANKS);
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
+await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = createMarks(scene, FM);
 let PROBE = null, probeKey = '';
+let LET = null;
 const TOOLS = setupPaintTools({ U, scene, camera, renderer, controls, mesh, fusMatIndex: GROUP.fuselage, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
+LET = setupLettering({ marks: MARKS, fm: FM, camera, renderer, controls, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
 
 // ---------- scheme state
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -73,7 +80,8 @@ function apply(s, { rebuildDecals = true } = {}) {
   KITS.mh60m.traverse(o => { if (o.userData.lidar) o.visible = !!s.lidar; });
   LIGHT.visible = s.light || s.nose === 'mh60t';
   LIGHT.userData.spot.intensity = s.light ? 600 : 0; KM.lamp.emissiveIntensity = s.light ? 6 : 0;
-  const key = JSON.stringify([s.tail, s.program, s.logo, s.cross, s.colors.text, s.colors.cross, s.star]);
+  migrate(s); MARKS.sync(s.marks);
+  const key = JSON.stringify([s.cross, s.colors.cross, s.star]);
   if (rebuildDecals && key !== decalKey) { if (decals) { scene.remove(decals); decals.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
     decals = buildDecals(mesh, s); scene.add(decals); decalKey = key; }
   needs = true;
@@ -129,15 +137,14 @@ $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="col
 function syncUI() {
   TOOLS.sync(true);
   $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
-  $('finish').value = S.finish; ['tail', 'program', 'logo'].forEach(k => $(k).value = S[k] || '');
+  $('finish').value = S.finish; migrate(S); LET?.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
-$('preset').onchange = e => { const tail = S.tail; S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };
+$('preset').onchange = e => { S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };
 $('nose').onchange = e => { S.nose = e.target.value; S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); };
 $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
 ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
-['tail', 'program', 'logo'].forEach(k => $(k).onchange = e => { S[k] = e.target.value; apply(S); });
 document.querySelectorAll('[data-z]').forEach(i => i.oninput = () => { S.colors[i.dataset.z] = i.value; apply(S); });
 $('labelsT').onchange = e => { showLabels = e.target.checked; needs = true; };
 $('zdbg').onchange = e => { U.uDbg.value = e.target.checked ? 1 : 0; needs = true; };
@@ -160,7 +167,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { TOOLS, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';
