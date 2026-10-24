@@ -55,6 +55,7 @@ function zoneGLSL(kind) {
     return ${ZI('upper')};
   }`;
 }
+const NACD = `#define NAC_IY 2.68\n#define NAC_IZ 0.965\n#define NAC_IR 0.315\n#define NAC_IA0 4.22\n#define NAC_IA1 5.0\n#define NAC_IL 4.47\n#define NAC_DR 0.255\n#define NAC_EA 6.98\n`;
 const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float t=clamp((w.y-uAGp.y)/(uAGp.w-uAGp.y),0.0,1.0); float lim=uAGp.x+(uAGp.z-uAGp.x)*sqrt(t); if(w.y>uAGq.y && abs(w.z)<uAGq.z) lim=max(lim,uAGq.x); return a<lim; }`;
 const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos(6.2832*(h+vec3(0.0,0.33,0.67))); }`;
 export function patchMaterial(m, kind, U, ref) {
@@ -66,6 +67,7 @@ export function patchMaterial(m, kind, U, ref) {
       varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
+${NACD}
       ${zoneGLSL(kind)}`)
       .replace('#include <map_fragment>', `
       vec4 tx=texture2D(map,vMapUv);
@@ -90,10 +92,21 @@ export function patchMaterial(m, kind, U, ref) {
         if(uAG>0.5 && agf(vW)){ col=uC[${ZI('antiglare')}]; agM=1.0; }
       }
       // layer 5: engine nacelle inlet lip/face and exhaust (IR suppressor) opening, flat black (MH-60T 6008/6029/6019 photos)
-      if(uNac>0.5){ float a=${glsl(B.NX)}-vW.x, az=abs(vW.z); vec3 nW=normalize(cross(dFdx(vW),dFdy(vW))); if(dot(nW,cameraPosition-vW)<0.0) nW=-nW;
-        bool inl = a>3.95 && a<4.95 && vW.y>2.35 && vW.y<3.0 && az>0.62 && az<1.22;
-        bool exh = a>5.95 && a<7.7 && vW.y>2.15 && vW.y<3.0 && az>0.6 && az<1.65;
-        if((inl && (pm<0.5 || nW.x>0.55)) || (exh && (pm<0.5 || nW.x<-0.45))){ col=uC[${ZI('nacelle')}]; pm=1.0; agM=1.0; lum=min(lum,1.0); } }` : ''}
+      if(uNac>0.5){ float a=${glsl(B.NX)}-vW.x, az=abs(vW.z);
+        // inlet: cylinder about the nacelle axis (y 2.68, |z| 0.965, along x). Black inside radius R from the lip plane (a 4.24) into the duct.
+        float r=length(vec2(vW.y-NAC_IY, az-NAC_IZ)); float fr=max(fwidth(r),1e-4), fa=max(fwidth(a),1e-4);
+        float lip=(1.0-smoothstep(NAC_IR-fr,NAC_IR+fr,r))*smoothstep(NAC_IA0-fa,NAC_IA0+fa,a)*(1.0-smoothstep(NAC_IL-fa,NAC_IL+fa,a));
+        float duct=(1.0-smoothstep(NAC_DR-fr,NAC_DR+fr,r))*smoothstep(NAC_IA0-fa,NAC_IA0+fa,a)*(1.0-smoothstep(NAC_IA1-fa,NAC_IA1+fa,a));
+        vec3 gN=normalize(cross(dFdx(vW),dFdy(vW))); vec2 rad=vec2(vW.y-NAC_IY, az-NAC_IZ); vec2 gyz=vec2(gN.y, gN.z*sign(vW.z));
+        // duct only on inward-facing surfaces (inside the inlet), so the outer cowling never picks it up; sign of gN is ambiguous, so use |cos|
+        float inward=1.0-smoothstep(0.35,0.6,abs(dot(normalize(gyz+1e-5),normalize(rad+1e-5)))*length(gyz));
+        duct*=max(inward, 1.0-step(0.5,pm));
+        float inl=max(lip,duct);
+        // exhaust / IR suppressor: everything aft of a cutoff plane (slanted to follow the suppressor's front edge) within the nacelle envelope
+        float ec=a-(NAC_EA+0.18*(vW.y-2.6)); float fe=max(fwidth(ec),1e-4);
+        float env=step(2.12,vW.y)*step(vW.y,3.02)*step(0.62,az)*step(az,1.7)*step(a,7.85);
+        float exh=smoothstep(-fe,fe,ec)*env;
+        float nk=max(inl,exh); if(nk>0.0){ col=mix(col,uC[${ZI('nacelle')}],nk); pm=max(pm,nk); agM=max(agM,nk); lum=mix(lum,min(lum,1.0),nk); } }` : ''}
       vec3 paint=col*clamp(mix(1.0,lum,0.85),0.45,1.45);
       if(uDbg>0.5 && z>=0) paint=dbgC(z)*clamp(lum,0.6,1.2);
       diffuseColor.rgb*=mix(tx.rgb,paint,pm); agM*=pm;`)
