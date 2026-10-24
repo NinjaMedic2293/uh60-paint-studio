@@ -1,0 +1,6 @@
+UH-60 3D Paint Studio
+Site code (app.js, kits.js, schemes.js, paint.js, decals.js, model.js, index.html, style.css): (c) 2026 NinjaMedic2293. All rights reserved unless stated otherwise.
+Third-party components keep their own licenses:
+- three.js (lib/three): MIT License, (c) 2010-2026 three.js authors.
+- 3D model in model/: see README.md for source and license/attribution terms.
+Military equipment shapes are approximations from public information; not official or endorsed.

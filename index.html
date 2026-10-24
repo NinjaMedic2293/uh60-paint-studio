@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UH-60 3D Paint Studio</title><link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./lib/three/three.module.js","three/addons/":"./lib/three/addons/"}}</script>
+</head><body>
+<div id="view"><canvas id="c"></canvas><div id="split" hidden></div><div id="labels"></div><div id="loading">Loading model…</div></div>
+<aside id="ui">
+  <h1>UH-60 3D Paint Studio</h1>
+  <section><h2>Views</h2><div class="row" id="views"></div>
+    <div class="row"><button id="shot">Screenshot PNG</button><label><input type="checkbox" id="zdbg"> Show zone map</label><label><input type="checkbox" id="labelsT"> Equipment labels</label></div></section>
+  <section><h2>Scheme</h2>
+    <label>Preset <select id="preset"></select></label>
+    <label>Nose kit <select id="nose"></select></label>
+    <div class="row"><label><input type="checkbox" id="antiglare"> Black nose / anti-glare</label><label><input type="checkbox" id="stripe"> Cheat line</label></div>
+    <div class="row"><label><input type="checkbox" id="hoist"> Rescue hoist</label><label><input type="checkbox" id="light"> Searchlight on</label><label><input type="checkbox" id="cross"> Medical cross</label></div>
+    <div class="row"><label><input type="checkbox" id="probe"> Refuelling probe</label><select id="probeSide"><option value="right">Probe on right</option><option value="left">Probe on left</option></select><label><input type="checkbox" id="lidar"> DVE LIDAR (MH-60M)</label></div>
+    <label>Finish (gloss ↔ matte) <input type="range" id="finish" min="0.15" max="0.95" step="0.05"></label>
+    <label>Tail number <input id="tail" maxlength="12"></label>
+    <label>Program name <input id="program" maxlength="28"></label>
+    <label>Logo text <input id="logo" maxlength="20"></label>
+  </section>
+  <section><h2>Zone colours</h2><div id="zones"></div></section>
+  <section><h2>Save / compare</h2>
+    <div class="row"><input id="saveName" placeholder="Scheme name"><button id="save">Save</button></div>
+    <div id="saved"></div>
+    <div class="row"><select id="cmpA"></select><select id="cmpB"></select><button id="compare">Compare A | B</button><button id="cmpOff">Exit</button></div>
+    <div class="row"><button id="export">Export JSON</button><button id="importBtn">Import JSON</button><input type="file" id="importFile" accept="application/json" hidden></div>
+  </section>
+  <section class="credit"><h2>Credits</h2>
+    <p>3D model: <a href="https://sketchfab.com/3d-models/sikorsky-uh-60-black-hawk-ee81eb66006b4d8980d0cf9ff6304b69" target="_blank" rel="noopener">“Sikorsky UH-60 Black Hawk” by helijah</a>, licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Repainted with a zone mask, mission-equipment kits, decals and lighting added.</p>
+    <p>Renderer: three.js (MIT). Kit dimensions: MH-60T ESS 9-in gimbal; Wescam MX-10 260 mm × 355 mm; others scaled from photos (approximate).</p>
+  </section>
+</aside>
+<script type="module" src="app.js"></script>
+</body></html>
