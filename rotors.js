@@ -7,6 +7,7 @@
 //  Tail rotor: R 1.675 m (3.35 m dia), canted 20 deg (disc normal from the model's own tail rotor), 4 blades
 //    chord 0.249 m on two crossed composite flex-beams (bearingless), pitch shells, pitch beam, hub cap.
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 export const ROT = {
   hub: [1.63, 3.66, 0], R: 8.18, chord: 0.527, tc: 0.095, sweepR: 0.93, sweep: 20, droop: 0.55, tipLen: 0.55, phase: Math.PI / 4,
@@ -84,49 +85,73 @@ export function buildRotors() {
   // ================= MAIN ROTOR =================
   const mr = new THREE.Group(); mr.position.set(...ROT.hub); root.add(mr);
   const { R, tipLen } = ROT, rTip = R - tipLen;
-  // mast (continues the model's mast tube up through the hub) and swashplate
-  mr.add(M(cyl(0.125, 0.135, 0.95, 32), MT.hub, [0, -0.38, 0]));
-  mr.add(M(cyl(0.40, 0.44, 0.06, 48), MT.hub, [0, -0.37, 0]));    // stationary swashplate
-  mr.add(M(cyl(0.38, 0.40, 0.05, 48), MT.steel, [0, -0.315, 0]));  // rotating swashplate
-  mr.add(M(cyl(0.18, 0.22, 0.14, 32), MT.dark, [0, -0.35, 0]));   // uniball housing
-  for (const [a, b] of [[[0.14, -0.12, 0], [0.28, -0.20, 0]], [[0.28, -0.20, 0], [0.30, -0.30, 0.05]]]) mr.add(rod(new THREE.Vector3(...a), new THREE.Vector3(...b), 0.022, MT.hub)); // rotating scissors
-  // hub: one-piece titanium hub, upper and lower plates with 4 arms (blade azimuths), central nut
-  const plate = () => { const s = new THREE.Shape(), a = 0.46, w = 0.20, rr = 0.07; // 4-arm star with filleted inner corners
-    const P = []; for (let i = 0; i < 4; i++) { const q = i * Math.PI / 2, c = Math.cos(q), sn = Math.sin(q), pc = (x, y) => [x * c - y * sn, x * sn + y * c];
-      P.push(pc(w + rr * 0.2, -w), pc(a, -w), pc(a + 0.05, 0), pc(a, w), pc(w + rr * 0.2, w)); }
-    s.moveTo(...P[0]); for (let i = 1; i < P.length; i++) s.lineTo(...P[i]); s.closePath(); return s; };
-  for (const [y, h] of [[0.085, 0.055], [-0.135, 0.055]]) { const g = new THREE.ExtrudeGeometry(plate(), { depth: h, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.012, bevelSegments: 3, curveSegments: 8 });
-    g.rotateX(Math.PI / 2); g.translate(0, y + h / 2, 0); g.rotateY(ROT.phase); mr.add(M(g, MT.hub)); }
-  mr.add(M(cyl(0.20, 0.20, 0.24, 32), MT.hub, [0, -0.02, 0]));
-  mr.add(M(cyl(0.10, 0.12, 0.08, 6), MT.dark, [0, 0.14, 0]));
-  // bifilar absorber: centre post, 4 arms at 45 deg to the blades, each with a paired pendulum mass (top & bottom)
-  const bif = new THREE.Group(); bif.position.y = 0.19; mr.add(bif);
-  bif.add(M(cyl(0.12, 0.14, 0.12, 32), MT.hub, [0, -0.04, 0]));
-  bif.add(M(cyl(0.05, 0.05, 0.06, 16), MT.dark, [0, 0.05, 0]));
-  for (let i = 0; i < 4; i++) { const a = ROT.phase + Math.PI / 4 + i * Math.PI / 2, arm = new THREE.Group(); arm.rotation.y = -a; bif.add(arm);
-    arm.add(ovalX(0.08, 0.46, 0.09, 0.045, 0.06, 0.035, MT.hub));
-    for (const y of [0.06, -0.06]) { const w = M(cyl(0.11, 0.11, 0.075, 28), MT.dark, [0.50, y, 0]); w.scale.set(1, 1, 1.3); arm.add(w); }
-    arm.add(M(cyl(0.03, 0.03, 0.2, 12), MT.steel, [0.50, 0, 0])); }
-  // per-blade hardware + blade
+  // v2 head (r18, r77, r92, r62, r74): chunky machined titanium hub, thick elastomeric-bearing housings with bolt rings,
+  // beefy spindles and cuffs, lead-lag dampers with hoses, near-vertical pitch links, swashplate + scissors, and a
+  // bifilar absorber: a 4-arm spider bolted on the hub top, arms 45 deg off the blades, each arm end carrying a
+  // U-shaped (clevis) tuning mass hung on two bifilar pins.
+  const RB = (w, h, d, r = 0.02) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2.1, h / 2.1, d / 2.1));
+  const nut = (p, ax, m = MT.steel, s = 0.018) => { const o = M(cyl(s, s, s * 0.9, 6), m, p); if (ax === 'x') o.rotation.z = Math.PI / 2; if (ax === 'z') o.rotation.x = Math.PI / 2; return o; };
+  const tube = (pts, r, m) => M(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 32, r, 8), m);
+  // mast (silver standpipe), swashplate, scissors
+  mr.add(M(cyl(0.15, 0.16, 0.95, 40), MT.steel, [0, -0.47, 0]));
+  mr.add(M(cyl(0.165, 0.165, 0.06, 40), MT.hub, [0, -0.20, 0]));
+  mr.add(M(cyl(0.50, 0.54, 0.07, 56), MT.hub, [0, -0.50, 0]));     // stationary swashplate
+  mr.add(M(cyl(0.56, 0.58, 0.06, 56), MT.hub, [0, -0.435, 0]));    // rotating swashplate
+  mr.add(M(cyl(0.22, 0.25, 0.16, 40), MT.dark, [0, -0.47, 0]));    // uniball / slider housing
+  for (let k = 0; k < 4; k++) { const a = ROT.phase + k * Math.PI / 2 + Math.atan2(0.30, 0.58); mr.add(M(RB(0.14, 0.06, 0.08, 0.015), MT.hub, [Math.cos(a) * 0.60, -0.435, -Math.sin(a) * 0.60], [0, a, 0])); } // rotating-swashplate pitch-link lugs
+  { const sc = new THREE.Group(); sc.rotation.y = ROT.phase + Math.PI / 4; mr.add(sc); // rotating scissors (hub -> swashplate), two links and a knee
+    sc.add(M(RB(0.06, 0.06, 0.08, 0.015), MT.hub, [0.17, -0.18, 0]));
+    sc.add(rod(new THREE.Vector3(0.17, -0.18, 0), new THREE.Vector3(0.30, -0.30, 0), 0.026, MT.hub));
+    sc.add(rod(new THREE.Vector3(0.30, -0.30, 0), new THREE.Vector3(0.40, -0.42, 0), 0.026, MT.hub));
+    sc.add(M(cyl(0.03, 0.03, 0.08, 12), MT.steel, [0.30, -0.30, 0], [Math.PI / 2, 0, 0])); }
+  // hub body: thick 4-lobed forging, lobes on the blade azimuths
+  mr.add(M(cyl(0.31, 0.33, 0.38, 8), MT.hub, [0, -0.03, 0], [0, Math.PI / 8, 0]));
+  mr.add(M(cyl(0.24, 0.30, 0.06, 40), MT.hub, [0, -0.20, 0]));
+  for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; mr.add(nut([Math.cos(a) * 0.26, -0.235, Math.sin(a) * 0.26], 'y')); }
+  // bifilar: spider plate bolted on the hub top + 4 arms + U-shaped masses on bifilar pins
+  const bif = new THREE.Group(); bif.position.y = 0.13; mr.add(bif);
+  bif.add(M(cyl(0.24, 0.26, 0.05, 40), MT.hub, [0, 0.025, 0]));
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + Math.PI / 8; bif.add(nut([Math.cos(a) * 0.20, 0.055, Math.sin(a) * 0.20], 'y')); }
+  bif.add(M(cyl(0.13, 0.16, 0.08, 32), MT.hub, [0, 0.09, 0]));
+  bif.add(M(cyl(0.08, 0.08, 0.03, 6), MT.dark, [0, 0.145, 0]));
+  for (let i = 0; i < 4; i++) { const a = ROT.phase + Math.PI / 4 + i * Math.PI / 2, arm = new THREE.Group(); arm.rotation.y = a; bif.add(arm);
+    arm.add(M(RB(0.30, 0.08, 0.14, 0.02), MT.hub, [0.30, 0.06, 0]));            // spider arm
+    arm.add(M(RB(0.10, 0.12, 0.18, 0.02), MT.hub, [0.44, 0.07, 0]));            // arm end fitting (carries the pins)
+    // U-shaped tuning mass straddling the arm end: back block + two side cheeks, opening inboard
+    const ms = new THREE.Group(); ms.position.set(0.47, 0.07, 0); arm.add(ms);
+    ms.add(M(RB(0.08, 0.17, 0.34, 0.025), MT.dark, [0.07, 0, 0]));
+    for (const s of [-1, 1]) ms.add(M(RB(0.18, 0.17, 0.06, 0.02), MT.dark, [-0.01, 0, s * 0.14]));
+    // two bifilar pins (horizontal, tangential) with bushings visible on the cheek faces
+    for (const dx of [-0.05, 0.03]) for (const s of [-1, 1]) ms.add(M(cyl(0.024, 0.024, 0.012, 16), MT.hub, [dx, 0.02, s * 0.172], [Math.PI / 2, 0, 0]));
+  }
+  // per-blade hardware
   for (let i = 0; i < 4; i++) {
     const b = new THREE.Group(); b.rotation.y = ROT.phase + i * Math.PI / 2; mr.add(b); // local +X spanwise, +Z aft (CCW rotation)
-    // elastomeric bearing (laminated, between the hub plates) and spindle
-    const eb = M(cyl(0.15, 0.15, 0.20, 28), MT.elast, [0.40, -0.02, 0], [0, 0, Math.PI / 2]); b.add(eb);
-    for (const x of [0.32, 0.37, 0.42, 0.47]) b.add(M(cyl(0.155, 0.155, 0.01, 28), MT.steel, [x, -0.02, 0], [0, 0, Math.PI / 2]));
-    b.add(ovalX(0.50, 0.70, 0.10, 0.10, 0.09, 0.09, MT.hub)); // spindle
-    // cuff: bolted clevis around the blade spar
-    b.add(ovalX(0.68, 1.15, 0.20, 0.12, 0.16, 0.07, MT.hub));
-    for (const x of [0.80, 0.92, 1.04]) for (const s of [-1, 1]) b.add(M(cyl(0.02, 0.02, 0.19 - (x - 0.8) * 0.15, 10), MT.steel, [x, 0, s * 0.06]));
-    b.add(M(cyl(0.03, 0.03, 0.04, 10), MT.steel, [0.74, 0.14, 0])); // droop stop / flap stop
-    // pitch horn (leading side) and pitch-control rod down to the swashplate
-    b.add(rod(new THREE.Vector3(0.66, -0.04, -0.08), new THREE.Vector3(0.56, -0.07, -0.30), 0.035, MT.hub));
-    b.add(rod(new THREE.Vector3(0.56, -0.09, -0.30), new THREE.Vector3(0.54, -0.31, -0.29), 0.03, MT.steel)); // pitch link (near vertical)
-    b.add(rod(new THREE.Vector3(0.33, -0.315, -0.18), new THREE.Vector3(0.54, -0.315, -0.29), 0.04, MT.hub)); // rotating swashplate lug
-    b.add(M(new THREE.SphereGeometry(0.045, 12, 8), MT.dark, [0.54, -0.31, -0.29]));
-    b.add(M(new THREE.SphereGeometry(0.04, 12, 8), MT.dark, [0.56, -0.08, -0.30]));
-    // lead-lag damper (trailing side) hub -> cuff
-    b.add(rod(new THREE.Vector3(0.22, 0.0, 0.24), new THREE.Vector3(0.60, 0.0, 0.21), 0.055, MT.dark, 18));
-    b.add(rod(new THREE.Vector3(0.55, 0.0, 0.21), new THREE.Vector3(0.80, 0.0, 0.17), 0.026, MT.steel, 12));
+    // hub arm + elastomeric bearing housing: heavy rounded box, round bolted outer face
+    b.add(M(RB(0.28, 0.36, 0.36, 0.05), MT.hub, [0.34, -0.03, 0]));
+    b.add(M(cyl(0.17, 0.17, 0.08, 36), MT.hub, [0.48, -0.02, 0], [0, 0, Math.PI / 2]));
+    b.add(M(cyl(0.135, 0.135, 0.03, 36), MT.elast, [0.535, -0.02, 0], [0, 0, Math.PI / 2]));
+    for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; b.add(nut([0.525, -0.02 + Math.sin(a) * 0.15, Math.cos(a) * 0.15], 'x', MT.steel, 0.016)); }
+    // spindle and cuff (blade attachment), bolt rows top and bottom
+    b.add(ovalX(0.54, 0.76, 0.115, 0.11, 0.10, 0.10, MT.hub));
+    b.add(M(RB(0.46, 0.17, 0.26, 0.04), MT.hub, [0.95, 0, 0]));
+    b.add(ovalX(1.16, 1.32, 0.12, 0.075, 0.25, 0.04, MT.hub));
+    for (const x of [0.80, 0.90, 1.00, 1.10]) for (const s of [-1, 1]) { b.add(nut([x, 0.093, s * 0.075], 'y', MT.steel, 0.022)); b.add(nut([x, -0.093, s * 0.075], 'y', MT.steel, 0.022)); }
+    b.add(M(RB(0.07, 0.07, 0.10, 0.015), MT.hub, [0.66, 0.12, 0])); // flap / droop stop
+    // pitch horn (leading side) and near-vertical pitch link down to the rotating swashplate lug
+    b.add(M(RB(0.14, 0.09, 0.22, 0.02), MT.hub, [0.64, -0.08, -0.19]));
+    b.add(M(new THREE.SphereGeometry(0.04, 14, 10), MT.dark, [0.60, -0.13, -0.30]));
+    b.add(rod(new THREE.Vector3(0.59, -0.13, -0.30), new THREE.Vector3(0.58, -0.41, -0.30), 0.028, MT.steel, 14));
+    b.add(M(new THREE.SphereGeometry(0.035, 12, 8), MT.dark, [0.58, -0.415, -0.30]));
+    b.add(M(cyl(0.034, 0.034, 0.04, 14), MT.hub, [0.585, -0.27, -0.30]));
+    // lead-lag damper (trailing side): fat cylinder from a hub lug to the cuff, rod end, end eyes
+    b.add(M(RB(0.09, 0.09, 0.09, 0.02), MT.hub, [0.22, 0.0, 0.26]));
+    b.add(rod(new THREE.Vector3(0.24, 0.0, 0.26), new THREE.Vector3(0.62, 0.0, 0.23), 0.065, MT.dark, 20));
+    b.add(rod(new THREE.Vector3(0.60, 0.0, 0.23), new THREE.Vector3(0.84, 0.0, 0.15), 0.028, MT.steel, 12));
+    b.add(M(RB(0.08, 0.08, 0.08, 0.02), MT.hub, [0.85, 0.0, 0.14]));
+    // hydraulic hose to the damper (from the hub top)
+    b.add(tube([[0.12, 0.14, 0.12], [0.22, 0.17, 0.22], [0.36, 0.10, 0.30], [0.46, 0.06, 0.29]], 0.012, MT.elast));
+    b.add(tube([[0.18, 0.13, -0.10], [0.36, 0.16, -0.16], [0.56, 0.10, -0.12], [0.64, 0.06, -0.10]], 0.009, MT.elast));
     // blade: body (scheme 'blades'), tip cap (scheme 'tips'), LE abrasion strip, trim tab
     const body = M(bladeGeo(1.10, rTip, 64, mainS), MT.blade); body.userData.zone = 'blades'; b.add(body);
     b.add(M(bladeGeo(rTip, R, 14, mainS), MT.tip));
