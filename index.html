@@ -6,6 +6,9 @@
 <div id="view"><canvas id="c"></canvas><div id="split" hidden></div><div id="markTip" hidden></div><div id="labels"></div><div id="loading">Loading model…</div></div>
 <aside id="ui">
   <h1>UH-60 3D Paint Studio</h1>
+  <section><h2>Aircraft</h2>
+    <select id="aircraft"><option value="uh60" selected>UH-60L Black Hawk</option><option value="505" disabled>Bell 505 Jet Ranger X (no licensed model yet)</option><option value="206">Bell 206B JetRanger</option></select>
+  </section>
   <section><h2>Views</h2><div class="row" id="views"></div>
     <div class="row"><button id="shot">Screenshot PNG</button><label><input type="checkbox" id="zdbg"> Show zone map</label><label><input type="checkbox" id="labelsT"> Equipment labels</label></div></section>
   <section><h2>Scheme</h2>
@@ -56,8 +59,10 @@
   </section>
   <section class="credit"><h2>Credits</h2>
     <p>3D model: <a href="https://sketchfab.com/3d-models/sikorsky-uh-60-black-hawk-ee81eb66006b4d8980d0cf9ff6304b69" target="_blank" rel="noopener">“Sikorsky UH-60 Black Hawk” by helijah</a>, licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Repainted with a zone mask, mission-equipment kits, decals and lighting added.</p>
+    <p>Bell 206 page model: FlightGear Bell-206-JetRanger by MOJO &amp; Emmanuel BARANGER, <a href="model/BELL206-LICENSE.txt">GPL-2.0</a>.</p>
     <p>Renderer: three.js (MIT). Kit dimensions: MH-60T ESS 9-in gimbal; Wescam MX-10 260 mm × 355 mm; others scaled from photos (approximate).</p>
   </section>
 </aside>
+<script>document.getElementById('aircraft').onchange = e => { if (e.target.value === '206') location.href = 'bell.html'; };</script>
 <script type="module" src="app.js"></script>
 </body></html>
