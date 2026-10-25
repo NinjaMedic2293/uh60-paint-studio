@@ -26,19 +26,19 @@ export const AGC = { a0: 1.80, a1: 2.80, y: 2.405, z: 0.72 };
 // v9.3: the single large upper access door (sliding cover) is panel 100 in model/panels.png; it stays body colour to its edge
 export const AG_DOOR_PID = 100;
 // v10.1: MH-60T break follows the real seams (6003/6008/6029/6019): the whole nose skin panel on each side (76 L / 43 R)
-// is black and ends at the cockpit-door forward frame seam (a~1.19, vertical from the chin up to the sill, then raked aft up the windscreen post);
+// is black and ends at the cockpit-door forward frame seam (a~1.25, vertical from the chin up to the sill, then raked aft up the windscreen post);
 // nose tip / chin panels are black; under the chin the break is a straight transverse line at that same station.
 // The cockpit doors (73 / 40) and the upper access door (100) stay body colour; the cockpit roof keeps the agf roof rule.
 export const AG_NOSE_PIDS = [76, 43, 45, 77, 70, 38, 5, 24, 13];
 export const AG_BELLY_PIDS = [3, 9, 17, 23, 27, 34, 66];
-export const AG_BREAK_A = 1.19; // cockpit-door forward frame seam (MH-60T 6003/6008)
+export const AG_BREAK_A = 1.25; // cockpit-door forward frame seam (MH-60T 6003/6008)
 export const AG_POST_K = 0.56, AG_POST_Y = 1.45; // break rakes aft up the windscreen post
 // v10.2: post black widened aft (6003/6008/6029: black ~0.08 m wider than the glass edge, onto the door frame);
 // v10.4 (6003 matched-camera overlay): no sill step; door-window forward/upper frame stays body colour; a black
 // 'eyebrow' runs along the roof rail above the door window (y>AG_BROW_Y) from the windscreen aft to the door aft frame.
 export const AG_BROW_Y = 2.17, AG_BROW_A = 2.17;
 // bottom of the break curves forward around the chin-window frame's lower-aft corner into the belly (6003).
-export const AG_POST_W = 0.0, AG_CHIN_DA = 0.12, AG_CHIN_Y0 = 0.90, AG_CHIN_Y1 = 0.62;
+export const AG_POST_W = 0.0, AG_CHIN_DA = 0.05, AG_CHIN_Y0 = 0.90, AG_CHIN_Y1 = 0.62;
 const pidList = (L) => L.map(i => `abs(id-${i}.0)<0.5`).join(' || ');
 
 export const AGQ = [2.40, 2.28, 0.95, 0];
