@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bell 505 3D Paint Studio</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./lib/three/three.module.js","three/addons/":"./lib/three/addons/"}}</script>
+</head><body>
+<div id="view"><canvas id="c"></canvas><div id="markTip" hidden></div><div id="loading">Loading model…</div></div>
+<aside id="ui">
+  <h1>Bell 505 3D Paint Studio</h1>
+  <section><h2>Aircraft</h2>
+    <select id="aircraft"><option value="uh60">UH-60L Black Hawk</option><option value="505" selected>Bell 505 Jet Ranger X</option><option value="206">Bell 206B JetRanger</option></select>
+  </section>
+  <section><h2>Views</h2><div class="row" id="views"></div>
+    <div class="row"><button id="shot">Screenshot PNG</button><label><input type="checkbox" id="spin"> Rotors turning</label></div></section>
+  <section><h2>Scheme</h2>
+    <label>Preset <select id="preset"></select></label>
+    <div class="row"><label>Base <input type="color" id="base"></label><label>Finish <select id="finish"><option value="gloss">Gloss</option><option value="matte">Matte</option></select></label></div>
+    <h3>Stripe</h3>
+    <div class="row"><label><input type="checkbox" id="stOn"> Show</label><input type="color" id="stColor"><label>Width <input type="number" id="stW" min="1" max="40" step="0.5"> in</label></div>
+    <div class="row"><label>Height at nose <input type="range" id="stF" min="0.4" max="2.2" step="0.01"></label><label>at tail <input type="range" id="stR" min="0.4" max="2.2" step="0.01"></label></div>
+    <h3>Accent (lower body)</h3>
+    <div class="row"><label><input type="checkbox" id="acOn"> Show</label><input type="color" id="acColor"><label><input type="checkbox" id="acBoom"> Include tailboom</label></div>
+    <div class="row"><label>Line at nose <input type="range" id="acF" min="0.3" max="2.2" step="0.01"></label><label>at tail <input type="range" id="acR" min="0.3" max="2.2" step="0.01"></label></div>
+    <h3>Optional</h3>
+    <div class="row"><label><input type="checkbox" id="skOn"> Skid colour</label><input type="color" id="skColor"><label><input type="checkbox" id="tpOn"> Rotor-tip colour</label><input type="color" id="tpColor"></div>
+  </section>
+  <section><h2>Lettering &amp; markings</h2>
+    <p class="hint">Click <b>Place</b> then click the model; drag a mark across the surface (including the belly). Sizes are real-world inches. Wheel over a mark resizes it, Shift+wheel rotates.</p>
+    <div class="row"><button id="addText">+ Text</button><button id="bellN">N-number (12 in, tailboom)</button><button id="bellBelly">Belly N-number</button></div>
+    <div id="marks"></div>
+    <p class="hint cfr"><b>14 CFR 45.29(b)(3)</b>: rotorcraft registration marks at least <b>12 in</b> high.</p>
+    <div hidden><button id="faaN"></button><button id="faaR"></button><button id="faaX"></button><input type="checkbox" id="uscgJet"><input type="checkbox" id="uscgRescue"></div>
+  </section>
+  <section><h2>Saved schemes</h2>
+    <div class="row"><input id="name" placeholder="Scheme name"><button id="save">Save</button></div>
+    <div class="row"><select id="saved"></select><button id="load">Load</button><button id="del">Delete</button></div>
+    <div class="row"><button id="export">Export JSON</button><button id="import">Import JSON</button><input type="file" id="file" accept=".json" hidden></div>
+  </section>
+  <section class="credits"><h2>Credits</h2><p class="hint">Bell 505 3D model: original procedural geometry made for this site from published dimensions and public reference photos (approximate, not an engineering model). Not affiliated with or endorsed by Bell Textron.</p></section>
+</aside>
+<script type="module" src="bell505.js"></script>
+</body></html>

@@ -11,7 +11,7 @@ import { setupLettering } from './lettering-ui.js';
 const NX = 6.243, $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
 const KEY = 'bell206-schemes', CUR = 'bell206-current-v2'; // v2: new no-graphics default (old autosave ignored, saved schemes kept)
 if (q.has('shot')) document.body.classList.add('shot');
-$('aircraft').onchange = e => { if (e.target.value === 'uh60') location.href = 'index.html'; };
+$('aircraft').onchange = e => { if (e.target.value === 'uh60') location.href = 'index.html'; if (e.target.value === '505') location.href = 'bell505.html'; };
 
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
