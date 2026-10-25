@@ -129,9 +129,11 @@ export function markNacelles(mesh, matIndex, NX, img) {
     const a = NX - c.x, az = Math.abs(c.z), r = Math.hypot(c.y - NAC.iy, az - NAC.iz); let f = 0;
     const L = Math.max(v[0].distanceTo(v[1]), v[1].distanceTo(v[2]), v[2].distanceTo(v[0]));
     if (a > NAC.a0 && a < NAC.a1 && r > NAC.r0 && r < NAC.r1 && fn.x > NAC.fx && L < NAC.L) f = 1;
+    // outer side of the rim lip: the small outward-facing band of faces from the ring back to the lip/cowl seam (next ring is the long cowl faces)
+    else if (a > NAC.o0 && a < NAC.o1 && r > NAC.r0 && r < NAC.or1 && L < NAC.oL && Math.abs(fn.dot(new THREE.Vector3(0, c.y - NAC.iy, (c.z - Math.sign(c.z) * NAC.iz)).normalize())) > 0.8) f = 1;
     else if (a > NAC.e0 && a < NAC.e1 && c.y > 2.12 && c.y < 3.02 && az > 0.6 && az < 1.7) { const uu = (U.getX(t) + U.getX(t + 1) + U.getX(t + 2)) / 3, vv = (U.getY(t) + U.getY(t + 1) + U.getY(t + 2)) / 3; if (!paint(uu, vv)) f = 2; }
     if (f) { out[t] = out[t + 1] = out[t + 2] = f; f === 1 ? nl++ : ne++; }
   }
   g.setAttribute('aNac', new THREE.BufferAttribute(out, 1)); return { lip: nl, exhaust: ne };
 }
-export const NAC = { iy: 2.68, iz: 0.965, a0: 4.28, a1: 4.40, r0: 0.16, r1: 0.37, fx: 0.25, L: 0.105, e0: 6.6, e1: 7.85 };
+export const NAC = { iy: 2.68, iz: 0.965, a0: 4.28, a1: 4.40, r0: 0.16, r1: 0.37, fx: 0.25, L: 0.105, o0: 4.37, o1: 4.43, or1: 0.335, oL: 0.125, e0: 6.6, e1: 7.85 };
