@@ -23,6 +23,8 @@ export const MAXP = 8, MAXR = 8;
 // above yRoof (within |z|<zRoof) the black covers the cabin roof back to the upper-cowling forward edge (aRoof).
 export const AG = [1.40, 0.80, 1.78, 2.25];
 export const AGC = { a0: 1.80, a1: 2.80, y: 2.405, z: 0.72 };
+// v9.3: the single large upper access door (sliding cover) is panel 100 in model/panels.png; it stays body colour to its edge
+export const AG_DOOR_PID = 100;
 export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
   const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uNac: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
@@ -68,6 +70,7 @@ export function patchMaterial(m, kind, U, ref) {
       varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; ${kind === 0 ? 'varying float vNac;' : ''} uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
+      ${kind === 0 ? `bool agDoor(vec2 uv){ if(uPanOn>0.5){ float id=floor(texture2D(uPanId,uv).r*255.0+0.5); return abs(id-${AG_DOOR_PID}.0)<0.5; } return vNac>2.5; }` : ''}
 ${NACD}
       ${zoneGLSL(kind)}`)
       .replace('#include <map_fragment>', `
@@ -90,7 +93,7 @@ ${NACD}
           if(mod(pc.a,2.0)>0.5) col=pc.rgb;
           if(pc.a>1.5) col=mix(col,vec3(0.05,0.75,1.0),0.45); }
         // layer 4: MH-60T anti-glare on top, always matte
-        if(uAG>0.5 && agf(vW)${kind === 0 ? ' && vNac<2.5' : ''}){ col=uC[${ZI('antiglare')}]; agM=1.0; }
+        if(uAG>0.5 && agf(vW)${kind === 0 ? ' && !agDoor(vMapUv)' : ''}){ col=uC[${ZI('antiglare')}]; agM=1.0; }
       }
       // layer 5: engine nacelle flat black, selected by mesh faces (markNacelles): 1 = inlet lip torus, 2 = exhaust opening surfaces
       if(uNac>0.5){ float nk=step(0.5,vNac)*step(vNac,2.5);
