@@ -41,6 +41,10 @@ export const AG_BROW_Y = 2.17, AG_BROW_A = 2.17;
 export const AG_POST_W = 0.0, AG_CHIN_DA = 0.05, AG_CHIN_Y0 = 0.90, AG_CHIN_Y1 = 0.62;
 const pidList = (L) => L.map(i => `abs(id-${i}.0)<0.5`).join(' || ');
 
+// v10.6: the gear boxes in zf() also enclose fuselage skin (main-gear sponson/fairing panels 39/72, 40/73, 33/67, 32/68, 0/1/28/29;
+// tail-wheel strut-root panels 11, 42/75). Only texels of the gear's own panel IDs (struts, wheels, tyres) keep the gear zone;
+// skin texels fall back to the body zone so they take scheme colour, paint breaks and panels.
+export const GEAR_PIDS = [19, 35, 36, 111, 119];
 export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
   const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uNac: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
@@ -59,12 +63,10 @@ const ZI = k => ZKEYS.indexOf(k);
 function zoneGLSL(kind) {
   if (kind === 1) return `int zf(vec3 w){ float r=length(w.xz-vec2(${glsl(B.rotorHub[0])},${glsl(B.rotorHub[1])})); if(r>${glsl(B.rotorR - B.tipLen)}) return ${ZI('tips')}; if(r>1.05) return ${ZI('blades')}; return -1; }`;
   if (kind === 2) return `int zf(vec3 w){ float r=length(w.xy-vec2(${glsl(B.trHub[0])},${glsl(B.trHub[1])})); if(r>${glsl(B.trR - B.trTip)}) return ${ZI('tips')}; if(r>0.30) return ${ZI('blades')}; return -1; }`;
-  return `int zf(vec3 w){
+  return `int zfb(vec3 w){
     float a=${glsl(B.NX)}-w.x, y=w.y, az=abs(w.z);
     if(a>${glsl(B.finA)} && y>${glsl(B.finY)} && az<0.55) return ${ZI('fin')};
     if(a>${glsl(B.stabA)} && az>0.42 && y<2.6) return ${ZI('stab')};
-    if(a>2.7 && a<4.25 && az>0.95 && y<1.05) return ${ZI('gear')};
-    if(a>11.3 && a<12.8 && y<0.95 && az<0.35) return ${ZI('gear')};
     if(a<${glsl(B.noseA)} && y<1.62) return ${ZI('nose')};
     if(a>${glsl(B.boomA)}){ if(a>${glsl(B.band0)} && a<${glsl(B.band1)}) return ${ZI('band')}; return ${ZI('boom')}; }
     if(y>${glsl(B.cowlY)} && a>2.55) return ${ZI('cowl')};
@@ -72,6 +74,12 @@ function zoneGLSL(kind) {
     if(uST>0.5 && y>${glsl(B.s0)} && y<${glsl(B.s1)}) return ${ZI('stripe')};
     if(y<${glsl(B.belt)}) return ${ZI('belly')};
     return ${ZI('upper')};
+  }
+  int zf(vec3 w){
+    float a=${glsl(B.NX)}-w.x, y=w.y, az=abs(w.z);
+    if(a>2.7 && a<4.25 && az>0.95 && y<1.05) return ${ZI('gear')};
+    if(a>11.3 && a<12.8 && y<0.95 && az<0.35) return ${ZI('gear')};
+    return zfb(w);
   }`;
 }
 const NACD = `#define NAC_IY 2.68\n#define NAC_IZ 0.965\n#define NAC_IR 0.315\n#define NAC_IA0 4.22\n#define NAC_IA1 5.0\n#define NAC_IL 4.56\n#define NAC_DR 0.255\n#define NAC_EA 6.98\n`;
@@ -102,6 +110,7 @@ ${NACD}
       .replace('#include <map_fragment>', `
       vec4 tx=texture2D(map,vMapUv);
       int z=zf(vW);
+      ${kind === 0 ? `if(z==${ZI('gear')} && uPanOn>0.5){ float id=floor(texture2D(uPanId,vMapUv).r*255.0+0.5); if(!(${pidList(GEAR_PIDS)})) z=zfb(vW); }` : ''}
       float pm = ${kind === 0 ? 'smoothstep(0.0,0.025,tx.g-max(tx.r,tx.b)*1.02)' : '1.0'};
       if(z<0) pm=0.0;
       float lum=dot(tx.rgb,vec3(.3,.59,.11))/uRef;
