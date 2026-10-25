@@ -6,7 +6,7 @@
 // The warning diamond sits on the dome's left side. Matte black via the kit 'nose' material, which app.js drives to the anti-glare finish.
 // EO/IR gimbal is under the chin aft of the radar. Searchlight, probe, hoist and paint are NOT touched here.
 import * as THREE from 'three';
-export const NOSE_T = { zc: 0, dFrac: 0.31, proud: 0.40, embed: 0.10, flir: { a: 0.42, z: -0.02, d: 0.24 } };
+export const NOSE_T = { zc: 0, dFrac: 0.31, faceOff: 0.0, embed: 0.10, kB: 1.80, ycR: 1.15, chinL: 0.50, cylL: 0.80, shelfF: 0.85, turOff: 0.55, flir: { a: 0.42, z: -0.02, d: 0.24 } };
 function findFuselage(scene) { let best = null, n = 0; scene.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData.kit) { const c = o.geometry.attributes.position.count; if (c > n) { n = c; best = o; } } }); return best; }
 export function buildNoseMH60T(M, P) {
   const T = NOSE_T, g = new THREE.Group(); g.name = 'mh60t-nose';
@@ -31,42 +31,46 @@ export function buildNoseMH60T(M, P) {
     // nose tip: the most-forward skin point on the centreline (6003 side photo: the radar axis continues the nose tip line)
     let tipY = 1.0, tipA = 9;
     for (let y = bot + 0.02; y < top; y += 0.01) { const p = cast(P(-3, y, 0), new THREE.Vector3(1, 0, 0)); if (p) { const a = P(0,0,0).x - p.x; if (a < tipA) { tipA = a; tipY = y; } } }
-    const yc = bot + 0.85 * R; // v8: 6003 front photo is the height authority (radar at the bottom of the black nose)
+    const yc = bot + T.ycR * R; // v8: 6003 front photo is the height authority (radar at the bottom of the black nose)
     const dR = R * 1.07, dL = 1.12; // dome slightly larger than the can and a touch elongated (rounder ball)
     // nose skin along the radar axis (from ahead, toward +a)
     const pf = cast(P(-3, yc, T.zc), P(1, yc, T.zc).sub(P(0, yc, T.zc)).normalize());
     const a0 = pf ? P(0,0,0).x - pf.x : 0.05;
-    const aFront = a0 - T.proud, aBack = a0 + T.embed, L = aBack - aFront;
-    console.log('[mh60t v6] nose width', width.toFixed(3), 'bot', bot.toFixed(3), 'top', top.toFixed(3), 'D', D.toFixed(3), 'yc', yc.toFixed(3), 'tipY', tipY.toFixed(3), 'a0', a0.toFixed(3));
-    const can = mk(new THREE.CylinderGeometry(R, R, L, 48, 1, false), M.nose, P((aFront + aBack) / 2, yc, T.zc)); can.rotation.z = Math.PI / 2; rad.add(can);
-    const dome = mk(new THREE.SphereGeometry(dR, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), M.nose, P(aFront, yc, T.zc)); dome.rotation.z = -Math.PI / 2; dome.scale.set(1, dL, 1); rad.add(dome);
-    // v8 mounting shelf (6003 side photo): flat dark horizontal plate under the chin. The radar sits on its forward end and the turret hangs below.
-    const PL = { t: 0.08, w: D * 1.15, aF: aFront - 0.20 * dR * dL, aB: a0 + 0.50, rc: 0.07 };
-    const yTop = yc - R - 0.004, yBot = yTop - PL.t;
-    { const xF = P(PL.aF, 0, 0).x, xB = P(PL.aB, 0, 0).x, hw = PL.w / 2, r = PL.rc, sh = new THREE.Shape();
-      sh.moveTo(xB, -hw); sh.lineTo(xF - r, -hw); sh.quadraticCurveTo(xF, -hw, xF, -hw + r); sh.lineTo(xF, hw - r); sh.quadraticCurveTo(xF, hw, xF - r, hw); sh.lineTo(xB, hw); sh.lineTo(xB, -hw);
-      const g2 = new THREE.ExtrudeGeometry(sh, { depth: PL.t, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2, curveSegments: 10 });
-      const plate = mk(g2, M.nose); plate.rotation.x = Math.PI / 2; plate.position.set(0, yTop, T.zc); rad.add(plate);
-      // fasteners along both side edges of the underside
-      for (let a = PL.aF + 0.06; a < PL.aB - 0.02; a += 0.09) for (const sz of [-1, 1]) {
-        const bt = mk(new THREE.CylinderGeometry(0.008, 0.008, 0.006, 8), M.darkMetal, P(a, yBot - 0.006, T.zc + sz * (hw - 0.03))); rad.add(bt); }
-      // attachment fairing: tapered web between the plate top and the chin skin, aft of the can
-      const aW0 = a0 + 0.02, aW1 = PL.aB, ys = hitY((aW0 + aW1) / 2, 0, false) ?? yTop; const hgt = Math.max(0.02, ys - yTop + 0.04);
-      const web = mk(new THREE.BoxGeometry(aW1 - aW0, hgt, PL.w * 0.86), M.nose, P((aW0 + aW1) / 2, yTop + hgt / 2, T.zc)); rad.add(web);
-      // front edge lip strip (lighter seam line seen along the plate's nose)
-      const lipS = mk(new THREE.BoxGeometry(0.012, 0.012, PL.w - 2 * r), M.radar, P(PL.aF + 0.004, yTop - PL.t / 2, T.zc)); rad.add(lipS); }
-    // joint ring at the dome/can seam
-    { const ring = mk(new THREE.TorusGeometry(dR + 0.001, 0.005, 8, 64), M.radar, P(aFront, yc, T.zc)); ring.rotation.y = Math.PI / 2; rad.add(ring); }
-    // warning diamond plate on the dome's left side (geometry only, no text)
-    { const ang = 0.55, pl = mk(new THREE.BoxGeometry(D * 0.30, D * 0.30, 0.006), M.grille, P(aFront - (dR * dL + 0.012) * Math.sin(ang), yc, T.zc - (dR + 0.012) * Math.cos(ang)));
-      pl.rotation.order = 'YXZ'; pl.rotation.y = -ang; pl.rotation.z = Math.PI / 4; rad.add(pl); }
+    // v9 housing (6003 side photo): one piece, tombstone section. Rounded top (radius R about the axis), side walls tangent at the widest
+    // point that drop straight down, and a flat bottom at yB = yc - kB*R. That flat bottom IS the plate: it runs aft under the chin flush and
+    // coplanar, with the same vertical side walls. A hemispherical cap on the front carries the upper half; the lower box ends in a flat face there.
+    // Measured on the 6003 side photo (housing front face = seam behind the ball; D = ball diameter):
+    //  - the ball is a cylinder 0.6D long plus a hemispherical cap, so it is about 1.1D long ahead of the face;
+    //  - the housing behind the face has a rounded top and vertical side walls down to a flat bottom 1.62R below the ball axis;
+    //  - the flat bottom continues forward under the ball as the lower part of the housing (top = ball bottom), ending 0.65D ahead of the face;
+    //  - aft, the same walls and flat bottom run under the chin; the turret hangs right under the flat bottom, 0.28D aft of the face.
+    const aFace = a0 - T.faceOff, aCap = aFace - T.cylL * D, aTipD = aCap - R, aBack = a0 + T.embed, yB = yc - T.kB * R, aChin = a0 + T.chinL, aShelf = aFace - T.shelfF * D;
+    console.log('[mh60t v9] width', width.toFixed(3), 'bot', bot.toFixed(3), 'top', top.toFixed(3), 'D', D.toFixed(3), 'yc', yc.toFixed(3), 'yB', yB.toFixed(3), 'a0', a0.toFixed(3), 'ballFront', aTipD.toFixed(3));
+    const tomb = (y0, len, xAft) => { const sh = new THREE.Shape(); sh.moveTo(-R, y0); sh.lineTo(R, y0); sh.lineTo(R, yc); sh.absarc(0, yc, R, 0, Math.PI, false); sh.lineTo(-R, y0);
+      const g2 = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false, curveSegments: 40 }); const m = mk(g2, M.nose); m.rotation.y = Math.PI / 2; m.position.set(xAft, 0, T.zc); return m; };
+    const Rh = R * 1.04; // housing slightly proud of the ball so the face seam reads
+    { const sh = new THREE.Shape(); sh.moveTo(-Rh, yB); sh.lineTo(Rh, yB); sh.lineTo(Rh, yc); sh.absarc(0, yc, Rh, 0, Math.PI, false); sh.lineTo(-Rh, yB);
+      const g2 = new THREE.ExtrudeGeometry(sh, { depth: aBack - aFace, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2, curveSegments: 40 }); const m = mk(g2, M.nose); m.rotation.y = Math.PI / 2; m.position.set(P(aBack, 0, 0).x, 0, T.zc); rad.add(m); }
+    // ball: cylinder + hemispherical cap
+    { const c = mk(new THREE.CylinderGeometry(R, R, aCap - aFace < 0 ? aFace - aCap : 0.01, 48), M.nose, P((aFace + aCap) / 2, yc, T.zc)); c.rotation.z = Math.PI / 2; rad.add(c); }
+    const cap = mk(new THREE.SphereGeometry(R, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), M.nose, P(aCap, yc, T.zc)); cap.rotation.z = -Math.PI / 2; rad.add(cap);
+    // forward lower housing under the ball: same width, flat bottom flush at yB, top = ball bottom
+    { const h = (yc - R) - yB; rad.add(mk(new THREE.BoxGeometry(aFace - aShelf, h, 2 * Rh), M.nose, P((aFace + aShelf) / 2, yB + h / 2, T.zc))); }
+    // chin section aft: same walls, same flat bottom, up into the chin skin
+    { const ys = Math.max(hitY(aBack, 0, false) ?? yc, hitY(aChin, 0, false) ?? yc) + 0.06, h = ys - yB;
+      rad.add(mk(new THREE.BoxGeometry(aChin - aBack + 0.02, h, 2 * Rh), M.nose, P((aBack + aChin) / 2, yB + h / 2, T.zc))); }
+    for (let a = aShelf + 0.04; a < aChin - 0.02; a += 0.09) for (const sz of [-1, 1]) rad.add(mk(new THREE.CylinderGeometry(0.007, 0.007, 0.005, 8), M.darkMetal, P(a, yB - 0.002, T.zc + sz * (Rh - 0.03))));
+    // warning diamond on the ball's left side near its rear (6003 side photo), geometry only
+    for (const sz of [-1, 1]) { const pl = mk(new THREE.BoxGeometry(D * 0.30, D * 0.30, 0.006), M.grille, P(aFace - 0.17 * D, yc + 0.02, T.zc + sz * (R + 0.003))); pl.rotation.z = Math.PI / 4; rad.add(pl); } // both sides: left in n030, right in 6003
+    window.__mh60t = { R, Rh, yc, yB, a0, aFace, aTipD, aCap, aShelf, aChin };
     // EO/IR gimbal under the chin, aft of the radar
-    { const F = T.flir, fr = F.d / 2, yb = yBot - 0.004; const Fa = a0 + 0.22, Fz = 0; // v8: turret hangs from the plate underside
+    { const F = T.flir, fr = F.d / 2, yb = yB; const Fa = aFace + T.turOff * D, Fz = 0; // v8: turret hangs from the plate underside
       fl.add(mk(new THREE.SphereGeometry(fr, 40, 28), M.mission));
       fl.add(mk(new THREE.CylinderGeometry(fr * 0.86, fr * 0.9, fr * 0.5, 32), M.mission, new THREE.Vector3(0, fr * 0.78, 0)));
       fl.add(mk(new THREE.CylinderGeometry(fr * 0.55, fr * 0.6, 0.12, 24), M.darkMetal, new THREE.Vector3(0, fr * 0.78 + 0.1, 0)));
       const win = mk(new THREE.CircleGeometry(fr * 0.42, 32), M.lens, new THREE.Vector3(fr * 0.99, -fr * 0.05, 0)); win.rotation.y = Math.PI / 2; fl.add(win);
-      fl.position.copy(P(Fa, yb - fr * 0.78 - 0.15, Fz)); }
+      const tyc = yb - fr - 0.012; fl.position.copy(P(Fa, tyc, Fz)); window.__mh60t.tur = [Fa, tyc];
+      fl.add(mk(new THREE.CylinderGeometry(fr * 0.6, fr * 0.6, 0.02, 20), M.darkMetal, new THREE.Vector3(0, fr + 0.02, 0))); }
     for (const z of [-0.16, 0, 0.16]) { const a = 0.80, y = hitY(a, z, true); if (y == null) continue;
       ant.add(mk(new THREE.CylinderGeometry(0.012, 0.016, 0.075, 10), M.darkMetal, P(a, y + 0.03, z))); }
     { const a = 0.95, z = 0.12, y = hitY(a, z, false); if (y != null) { const b = mk(new THREE.BoxGeometry(0.16, 0.10, 0.012), M.lightGray, P(a, y - 0.045, z)); b.rotation.z = 0.25; ant.add(b); } }
