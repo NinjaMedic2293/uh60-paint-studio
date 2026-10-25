@@ -13,7 +13,9 @@ const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e
 // v2 (photo-measured, main wheel 0.66 m as ruler): N8286 side drop (APF) skirt 1.46 m deep, bottom ~1.6 m below wheel bottoms,
 // front face ~31 deg / aft face ~32 deg from vertical, sides near-vertical, front of tank ~ main axle; VH-URS (brochure) depth ~1.3 m,
 // bottom ~1.2 m below wheels, snorkel ~3.7 m incl. a long slim pump head, pivot just aft of the left main wheel at shell height.
-export const HT = { a0: 3.55, a1: 6.95, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 1.45, fSlope: 32, aSlope: 30, sSlope: 4,
+// v3: capacity is the hard constraint. Shell (3.4 x 2.0 x 0.26, ~1.71 m3) + skirt (0.50 m deep, narrower top that flares
+// 4 deg outward, 15/10 deg front/aft faces, flat bottom) = ~4.75 m3 = 4500 L + ~5% margin; bottom ~0.2 m below wheel bottoms.
+export const HT = { a0: 3.55, a1: 6.95, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 0.50, fSlope: 15, aSlope: 10, sSlope: -4, inset: 0.07,
   piv: [3.95, 0.50, -1.19], tube: 3.2, head: 0.55, hang: 0.17, stow: 1.505 };
 function mesh(g, m, pos, rot) { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; if (pos) o.position.copy(pos); if (rot) o.rotation.set(...rot); return o; }
 // rounded-rectangle outline (half sizes hx along x, hz along z, corner radius r), n points per corner
@@ -41,12 +43,20 @@ export function buildHelitak() {
   const NR = 6, NP = rrect(1, 1, 0.1).length;
   const sg = new THREE.BufferGeometry(); const pos = new Float32Array(NR * NP * 3); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const idx = []; for (let r = 0; r < NR - 1; r++) for (let i = 0; i < NP; i++) { const j = (i + 1) % NP, a = r * NP + i, b = r * NP + j, c = (r + 1) * NP + i, d = (r + 1) * NP + j; idx.push(a, c, b, b, c, d); }
-  sg.setIndex(idx); const skirt = mesh(sg, M.skirt); g.add(skirt);
+  const uv = new Float32Array(NR * NP * 2); for (let r = 0; r < NR; r++) for (let i = 0; i < NP; i++) { uv[(r * NP + i) * 2] = i / NP * 14; uv[(r * NP + i) * 2 + 1] = r / (NR - 1); }
+  sg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); sg.setIndex(idx);
+  { // cheap fabric creases: soft vertical folds + a couple of horizontal fold lines (procedural canvas, colour + bump)
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 128);
+    let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 26; i++) { const px = rnd() * 256, w = 3 + rnd() * 10, g = x.createLinearGradient(px - w, 0, px + w, 0); const k = 200 + rnd() * 30 | 0;
+      g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(${k},${k},${k},0.8)`); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(px - w, rnd() * 30, 2 * w, 128); }
+    for (const py of [42, 86]) { x.fillStyle = 'rgba(215,215,215,0.7)'; x.fillRect(0, py, 256, 2); }
+    const T = new THREE.CanvasTexture(c); T.wrapS = THREE.RepeatWrapping; T.colorSpace = THREE.SRGBColorSpace; M.skirt.map = T; M.skirt.bumpMap = T; M.skirt.bumpScale = 0.6; M.skirt.clearcoat = 0.1; M.skirt.roughness = 0.75; } const skirt = mesh(sg, M.skirt); g.add(skirt);
   const bot = mesh(new RoundedBoxGeometry(1, 0.035, 1, 2, 0.012), M.dark); g.add(bot);
   const seam = mesh(new THREE.BoxGeometry(1, 0.004, 0.012), M.strap); g.add(seam);
   const tn = d => Math.tan(d * Math.PI / 180);
   function shape(e) { // e: 0 retracted .. 1 extended. Flat sloped front/aft faces, near-vertical sides, small corner radius
-    const D = HT.band + (HT.depth - HT.band) * e, xf0 = X + L / 2 - 0.03, xa0 = X - L / 2 + 0.03, hw0 = HT.w / 2 - 0.03; let xf, xa, hw, y;
+    const D = HT.band + (HT.depth - HT.band) * e, xf0 = X + L / 2 - HT.inset, xa0 = X - L / 2 + HT.inset, hw0 = HT.w / 2 - HT.inset; let xf, xa, hw, y;
     for (let r = 0; r < NR; r++) { const f = r / (NR - 1), d = D * f; y = yS - d;
       xf = xf0 - d * tn(HT.fSlope); xa = xa0 + d * tn(HT.aSlope); hw = hw0 - d * tn(HT.sSlope);
       const o = rrect((xf - xa) / 2, hw, 0.08), cx = (xf + xa) / 2;
