@@ -7,7 +7,8 @@ import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
 import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS, markNacelles } from './paint.js';
 import { loadFonts, createMarks, fuselageOnly, migrate, USCG, FAA, newText } from './lettering.js';
 import { setupLettering } from './lettering-ui.js';
-import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, buildTanks, buildBypass, P } from './kits.js';
+import { buildHoist } from './hoist.js';
+import { kitMaterials, buildKits, buildSearchlight, buildProbe, buildBifilar, buildTanks, buildBypass, P } from './kits.js';
 import { buildDecals } from './decals.js';
 import { setupPaintTools } from './planes.js';
 
@@ -78,7 +79,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   s.planes = s.planes || []; s.regions = s.regions || []; s.panels = s.panels || {}; TOOLS.sync(false);
   glassMats.forEach(m => { m.color.copy(lin(s.colors.glass)); });
   for (const k in KITS) KITS[k].visible = (k === s.nose);
-  HOIST.visible = !!s.hoist; TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
+  HOIST.visible = true; /* hoist always installed */ TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
   const pk = s.probeSide + '|' + s.nose;
   if (pk !== probeKey) { if (PROBE) scene.remove(PROBE); PROBE = buildProbe(KM, s.probeSide, s.nose); scene.add(PROBE); probeKey = pk; }
   KM.bypass.color.copy(lin(s.colors.cowl || s.colors.upper)); KM.bypass.roughness = s.finish; KM.bypass.clearcoat = 0.3;
