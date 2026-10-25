@@ -6,7 +6,7 @@
 // The warning diamond sits on the dome's left side. Matte black via the kit 'nose' material, which app.js drives to the anti-glare finish.
 // EO/IR gimbal is under the chin aft of the radar. Searchlight, probe, hoist and paint are NOT touched here.
 import * as THREE from 'three';
-export const NOSE_T = { zc: 0, dFrac: 0.36, faceOff: 0.0, embed: 0.10, kB: 2.05, ycR: 0.5, chinL: 0.85, cylL: 1.0, shelfF: 0.70, turOff: 0.55, turA: 0.25, turDrop: 0.241, boxW: 1.10, boxTop: 0.45, dia: { da: 0.381, th: 6.3, sa: 0.13, sv: 0.17 }, ports: { a: 0.72, z: [0.08, 0.23, 0.40] }, neck: 0.03, flir: { a: 0.42, z: -0.02, d: 0.24 }, rampL: 0.45 };
+export const NOSE_T = { zc: 0, dFrac: 0.36, faceOff: 0.0, embed: 0.10, kB: 2.05, ycR: 0.5, chinL: 0.85, cylL: 1.12, capK: 0.62, shelfF: 0.70, turOff: 0.55, turA: 0.25, turDrop: 0.10, boxW: 1.10, boxTop: 0.68, stripes: [{ a0: 0.21, a1: 0.62, th: 42, w: 0.03 }, { a0: 0.26, a1: 0.63, th: -33.5, w: 0.022 }], dia: { da: 0.381, th: 6.3, sa: 0.13, sv: 0.17 }, ports: { a: 0.72, z: [0.08, 0.23, 0.40] }, neck: 0.03, flir: { a: 0.42, z: -0.02, d: 0.26 }, rampL: 0.45 };
 function findFuselage(scene) { let best = null, n = 0; scene.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData.kit) { const c = o.geometry.attributes.position.count; if (c > n) { n = c; best = o; } } }); return best; }
 export function buildNoseMH60T(M, P) {
   const T = NOSE_T, g = new THREE.Group(); g.name = 'mh60t-nose';
@@ -44,8 +44,8 @@ export function buildNoseMH60T(M, P) {
     //  - the housing behind the face has a rounded top and vertical side walls down to a flat bottom 1.62R below the ball axis;
     //  - the flat bottom continues forward under the ball as the lower part of the housing (top = ball bottom), ending 0.65D ahead of the face;
     //  - aft, the same walls and flat bottom run under the chin; the turret hangs right under the flat bottom, 0.28D aft of the face.
-    const aFace = a0 - T.faceOff, aCap = aFace - T.cylL * D, aTipD = aCap - R, aBack = a0 + T.embed, yB = yc - R, aChin = a0 + T.chinL, aShelf = aFace - T.shelfF * D;
-    console.log('[mh60t v13] width', width.toFixed(3), 'bot', bot.toFixed(3), 'top', top.toFixed(3), 'D', D.toFixed(3), 'yc', yc.toFixed(3), 'yB', yB.toFixed(3), 'a0', a0.toFixed(3), 'ballFront', aTipD.toFixed(3));
+    const aFace = a0 - T.faceOff, aCap = aFace - T.cylL * D, aTipD = aCap - T.capK * R, aBack = a0 + T.embed, yB = yc - R, aChin = a0 + T.chinL, aShelf = aFace - T.shelfF * D;
+    console.log('[mh60t v14] width', width.toFixed(3), 'bot', bot.toFixed(3), 'top', top.toFixed(3), 'D', D.toFixed(3), 'yc', yc.toFixed(3), 'yB', yB.toFixed(3), 'a0', a0.toFixed(3), 'ballFront', aTipD.toFixed(3));
     const tomb = (y0, len, xAft) => { const sh = new THREE.Shape(); sh.moveTo(-R, y0); sh.lineTo(R, y0); sh.lineTo(R, yc); sh.absarc(0, yc, R, 0, Math.PI, false); sh.lineTo(-R, y0);
       const g2 = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false, curveSegments: 40 }); const m = mk(g2, M.nose); m.rotation.y = Math.PI / 2; m.position.set(xAft, 0, T.zc); return m; };
     const Rh = R * 1.04; // housing slightly proud of the ball so the face seam reads
@@ -53,7 +53,7 @@ export function buildNoseMH60T(M, P) {
       const g2 = new THREE.ExtrudeGeometry(sh, { depth: aBack - aFace, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2, curveSegments: 40 }); const m = mk(g2, M.nose); m.rotation.y = Math.PI / 2; m.position.set(P(aBack, 0, 0).x, 0, T.zc); rad.add(m); }
     // ball: cylinder + hemispherical cap
     { const c = mk(new THREE.CylinderGeometry(R, R, aCap - aFace < 0 ? aFace - aCap : 0.01, 48), M.nose, P((aFace + aCap) / 2, yc, T.zc)); c.rotation.z = Math.PI / 2; rad.add(c); }
-    const cap = mk(new THREE.SphereGeometry(R, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), M.nose, P(aCap, yc, T.zc)); cap.rotation.z = -Math.PI / 2; rad.add(cap);
+    const cap = mk(new THREE.SphereGeometry(R, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), M.nose, P(aCap, yc, T.zc)); cap.rotation.z = -Math.PI / 2; cap.scale.y = T.capK; rad.add(cap); // v14: slightly flattened dome, longer barrel (photo stripes stay straight to ~0.6 m ahead of the face)
     // v11: ONE lower box. The barrel's vertical side walls (|z| = Rh) continue straight down to a single flat bottom at the barrel's bottom
     // tangent yB = yc - R (nothing hangs below it except the turret). It starts under the barrel (aShelf) and runs aft flat until it is
     // buried in the chin skin; no lip, no step, no ramp plate. Side profile: top at the axis (the can covers above), extended aft into the skin.
@@ -78,6 +78,13 @@ export function buildNoseMH60T(M, P) {
         for (let i = 0; i < N; i++) for (let k = 0; k < N; k++) { const A = i * (N + 1) + k, B = A + N + 1; if (sz > 0) idx.push(A, B, A + 1, B, B + 1, A + 1); else idx.push(A, A + 1, B, B, A + 1, B + 1); }
         const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gg.setIndex(idx); gg.computeVertexNormals();
         const d = mk(gg, mat); d.castShadow = false; rad.add(d); } }
+    // v14 two thin white painted stripes on each side of the barrel (6003 photo): upper barrel and lower barrel, fore-aft, wrapped on the can
+    { const sm = new THREE.MeshBasicMaterial({ color: 0xcfcbc1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }), rr = R + 0.0025;
+      for (const st of T.stripes) for (const sz of [-1, 1]) { const pos = [], nrm = [], idx = [], N = 12, th = st.th * Math.PI / 180, dt = st.w / 2 / rr;
+        for (let i = 0; i <= N; i++) { const a = aFace - (st.a0 + (st.a1 - st.a0) * i / N); for (const t of [th - dt, th + dt]) { const w = P(a, yc + rr * Math.sin(t), T.zc + sz * rr * Math.cos(t)); pos.push(w.x, w.y, w.z); nrm.push(0, Math.sin(t), sz * Math.cos(t)); } }
+        for (let i = 0; i < N; i++) { const A = 2 * i; if (sz > 0) idx.push(A, A + 2, A + 1, A + 1, A + 2, A + 3); else idx.push(A, A + 1, A + 2, A + 1, A + 3, A + 2); }
+        const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); gg.setIndex(idx);
+        const m = mk(gg, sm); m.castShadow = m.receiveShadow = false; rad.add(m); } }
     // v12 white light ports: a transverse row under the nose at the aft end of the box (6003 photo)
     { const pm = new THREE.MeshStandardMaterial({ color: 0xece6d2, roughness: 0.35, emissive: 0x3a362a });
       for (const zz of T.ports.z) for (const sz of [-1, 1]) { const z = T.zc + sz * zz, y = Math.abs(zz) < R * T.boxW - 0.02 ? yB : (hitY(T.ports.a, z, false) ?? yB);
