@@ -17,11 +17,14 @@ function secPt(st, th) { const [yb, yt, hw, nu, cf, nl] = st; const yc = yb + cf
 function loft(S, a0, a1, nA, nR, capEnds = true) {
   const f = sampler(S), pos = [], idx = [];
   for (let i = 0; i <= nA; i++) { const u = i / nA, a = a0 + (a1 - a0) * (0.5 - 0.5 * Math.cos(Math.PI * u)); const st = f(a);
-    for (let j = 0; j < nR; j++) { const [y, z] = secPt(st, j / nR * Math.PI * 2); pos.push(NX - a, y, z); } }
-  for (let i = 0; i < nA; i++) for (let j = 0; j < nR; j++) { const A = i * nR + j, B = i * nR + (j + 1) % nR, C = A + nR, D = B + nR; idx.push(A, C, B, B, C, D); }
+    // resample the section evenly by arc length (superellipse angle sampling leaves flat sides as single long facets)
+    const D = 1440, P = [], L = [0]; for (let k = 0; k <= D; k++) { P.push(secPt(st, k / D * Math.PI * 2)); if (k) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); }
+    for (let j = 0, k = 0; j < nR; j++) { const t = j / nR * L[D]; while (k < D - 1 && L[k + 1] < t) k++; const u = (t - L[k]) / Math.max(1e-9, L[k + 1] - L[k]);
+      pos.push(NX - a, P[k][0] + (P[k + 1][0] - P[k][0]) * u, P[k][1] + (P[k + 1][1] - P[k][1]) * u); } }
+  for (let i = 0; i < nA; i++) for (let j = 0; j < nR; j++) { const A = i * nR + j, B = i * nR + (j + 1) % nR, C = A + nR, D = B + nR; idx.push(A, B, C, B, D, C); }
   if (capEnds) for (const [ri, flip] of [[0, true], [nA, false]]) { const c = pos.length / 3; let x = 0, y = 0, z = 0;
     for (let j = 0; j < nR; j++) { x += pos[(ri * nR + j) * 3]; y += pos[(ri * nR + j) * 3 + 1]; z += pos[(ri * nR + j) * 3 + 2]; } pos.push(x / nR, y / nR, z / nR);
-    for (let j = 0; j < nR; j++) { const A = ri * nR + j, B = ri * nR + (j + 1) % nR; flip ? idx.push(c, B, A) : idx.push(c, A, B); } }
+    for (let j = 0; j < nR; j++) { const A = ri * nR + j, B = ri * nR + (j + 1) % nR; flip ? idx.push(c, A, B) : idx.push(c, B, A); } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 const merge = gs => { const P = [], N = []; for (let g of gs) { g = g.index ? g.toNonIndexed() : g; if (!g.attributes.normal) g.computeVertexNormals(); for (const v of g.attributes.position.array) P.push(v); for (const v of g.attributes.normal.array) N.push(v); }
@@ -34,9 +37,9 @@ function plate(outline, thick, plane = 'xy', zc = 0) {
 
 // ---------- fuselage: side profile (yb, yt) from c12/c17/c25, plan half-width and section shape from front/rear views (c22, c20) and specs
 export const FUS = [
-  [-0.03, 0.80, 0.84, 0.015, 2.0, 0.50, 2.0], [0.00, 0.78, 0.92, 0.07, 1.9, 0.42, 1.8], [0.10, 0.72, 1.08, 0.21, 2.1, 0.38, 2.0], [0.25, 0.67, 1.31, 0.37, 2.4, 0.34, 2.4],
-  [0.45, 0.62, 1.57, 0.53, 2.6, 0.31, 3.0], [0.70, 0.57, 1.85, 0.67, 2.9, 0.29, 3.6], [1.00, 0.53, 2.11, 0.77, 3.3, 0.28, 4.2], [1.25, 0.51, 2.24, 0.81, 3.8, 0.27, 4.8],
-  [1.60, 0.50, 2.27, 0.83, 4.2, 0.27, 5.0], [2.40, 0.50, 2.29, 0.84, 4.2, 0.27, 5.0], [3.20, 0.52, 2.28, 0.83, 4.0, 0.28, 5.0], [3.70, 0.58, 2.23, 0.76, 3.6, 0.30, 4.0],
+  [-0.03, 0.80, 0.84, 0.015, 2.0, 0.50, 2.0], [0.00, 0.78, 0.92, 0.07, 1.9, 0.42, 1.8], [0.10, 0.72, 1.07, 0.15, 2.0, 0.40, 2.0], [0.25, 0.67, 1.30, 0.29, 2.4, 0.34, 2.4],
+  [0.45, 0.62, 1.57, 0.45, 2.6, 0.31, 3.0], [0.70, 0.57, 1.87, 0.61, 2.9, 0.29, 3.6], [1.00, 0.55, 2.15, 0.74, 3.3, 0.28, 4.2], [1.25, 0.53, 2.29, 0.81, 3.8, 0.27, 4.8],
+  [1.60, 0.53, 2.33, 0.83, 4.2, 0.27, 5.0], [2.40, 0.53, 2.35, 0.84, 4.2, 0.27, 5.0], [3.05, 0.55, 2.33, 0.83, 4.0, 0.28, 5.0], [3.55, 0.58, 2.25, 0.76, 3.6, 0.30, 4.0],
   [4.30, 0.80, 2.12, 0.58, 3.0, 0.40, 3.0], [4.80, 1.06, 1.95, 0.40, 2.6, 0.50, 2.6], [5.30, 1.22, 1.77, 0.27, 2.2, 0.50, 2.2], [6.00, 1.32, 1.72, 0.22, 2.0, 0.50, 2.0],
   [8.00, 1.38, 1.68, 0.16, 2.0, 0.50, 2.0], [9.60, 1.41, 1.63, 0.11, 2.0, 0.50, 2.0], [9.95, 1.43, 1.61, 0.09, 2.0, 0.50, 2.0], [9.97, 1.50, 1.54, 0.01, 2.0, 0.50, 2.0]];
 export const COWL = [[1.75, 2.10, 2.27, 0.05, 3.0], [1.95, 2.10, 2.41, 0.50, 3.0], [2.50, 2.10, 2.50, 0.60, 3.4], [3.60, 2.10, 2.53, 0.60, 3.4],
@@ -56,8 +59,8 @@ function patch(a0, a1, thLo, thHi, nu = 40, nv = 24, off = 0.008) { const pos = 
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
 const rr = (a, a0, a1, r) => { const d = Math.min(a - a0, a1 - a); return d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) ** 2)); };
 export const WIN = {
-  ws: { a0: 0.28, a1: 1.58, low: a => 0.98 + 0.02 * a }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
-  door: { a0: 1.74, a1: 2.50, yb: 1.00, yt: 2.15, r: 0.10 }, rear: { a0: 2.62, a1: 3.02, yb: 1.08, yt: 2.13, r: 0.08 } };
+  ws: { a0: 0.22, a1: 1.58, low: a => a < 1.1 ? 0.83 + 0.15 * a : 0.995 }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
+  door: { a0: 1.74, a1: 2.50, yb: 1.00, yt: 2.20, r: 0.10 }, rear: { a0: 2.62, a1: 3.02, yb: 1.08, yt: 2.18, r: 0.08 } };
 const wsLo = a => Math.min(WIN.ws.low(a) + rr(a, WIN.ws.a0 - 0.25, WIN.ws.a1, 0.14), fusAt(a)[1] - 0.03);
 const inWin = (a, y, z) => { const W = WIN.ws; if (a > W.a0 && a < W.a1 && y > wsLo(a)) return true;
   if (Math.abs(z) < 0.3) return false; for (const w of [WIN.door, WIN.rear]) if (a > w.a0 && a < w.a1 && y > w.yb + rr(a, w.a0, w.a1, w.r) && y < w.yt - rr(a, w.a0, w.a1, w.r)) return true; return false; };
@@ -68,13 +71,13 @@ function cutWin(g) { g = g.toNonIndexed(); const p = g.attributes.position.array
   const r = new THREE.BufferGeometry(); r.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); r.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); return r; }
 // window frame line along a set of surface points
 function frames() { const T = [], W = WIN.ws, f = (a, th) => { const q = surfPt(a, th, 0.01); return [NX - q[0], q[1], q[2]]; };
-  for (const s of [1, -1]) { const pts = []; for (let a = W.a0 - 0.02; a <= W.a1; a += 0.03) pts.push(f(a, thOfY(a, wsLo(a), s))); T.push(tube(pts, 0.014, 5));
+  for (const s of [1, -1]) { const pts = []; for (let a = W.a0 - 0.02; a <= W.a1; a += 0.03) pts.push(f(a, thOfY(a, wsLo(a), s))); T.push(tube(pts, 0.026, 8));
     for (const w of [WIN.door, WIN.rear]) { const pts = [], e = 0.012; const lo = a => w.yb + rr(a, w.a0, w.a1, w.r), hi = a => w.yt - rr(a, w.a0, w.a1, w.r);
       for (let a = w.a0 + e; a <= w.a1 - e; a += 0.03) pts.push(f(a, thOfY(a, lo(a), s))); for (let y = lo(w.a1 - e); y <= hi(w.a1 - e); y += 0.05) pts.push(f(w.a1 - e, thOfY(w.a1 - e, y, s)));
       for (let a = w.a1 - e; a >= w.a0 + e; a -= 0.03) pts.push(f(a, thOfY(a, hi(a), s))); for (let y = hi(w.a0 + e); y >= lo(w.a0 + e); y -= 0.05) pts.push(f(w.a0 + e, thOfY(w.a0 + e, y, s)));
-      pts.push(pts[0]); T.push(tube(pts, 0.014, 5)); } }
-  { const pts = []; for (let th = thOfY(W.a0, wsLo(W.a0), 1); th <= thOfY(W.a0, wsLo(W.a0), -1); th += 0.04) pts.push(f(W.a0 + 0.005, th)); T.push(tube(pts, 0.016, 5)); }
-  { const pts = []; for (let th = thOfY(W.a1, wsLo(W.a1), 1); th <= thOfY(W.a1, wsLo(W.a1), -1); th += 0.05) pts.push(f(W.a1 - 0.005, th)); T.push(tube(pts, 0.014, 5)); }
+      pts.push(pts[0]); T.push(tube(pts, 0.026, 8)); } }
+  { const pts = []; for (let th = thOfY(W.a0, wsLo(W.a0), 1); th <= thOfY(W.a0, wsLo(W.a0), -1); th += 0.04) pts.push(f(W.a0 + 0.005, th)); T.push(tube(pts, 0.026, 8)); }
+  { const pts = []; for (let th = thOfY(W.a1, wsLo(W.a1), 1); th <= thOfY(W.a1, wsLo(W.a1), -1); th += 0.05) pts.push(f(W.a1 - 0.005, th)); T.push(tube(pts, 0.026, 8)); }
   return T; }
 function glassGeo() { const G = []; const W = WIN.ws, lo = wsLo;
   G.push(patch(W.a0, W.a1, a => thOfY(a, lo(a), 1), a => thOfY(a, lo(a), -1), 70, 64));
@@ -92,7 +95,7 @@ function blade(r0, r1, c0, c1, tipFrom, t, sweep = 0) { const pos = [], idx = []
 
 export function buildBell505() {
   const root = new THREE.Group(); root.name = 'bell505';
-  const fus = cutWin(loft(FUS, -0.03, 9.97, 220, 112)), cowl = loft(COWL, 1.75, 5.12, 50, 48);
+  const fus = cutWin(loft(FUS, -0.03, 9.97, 420, 176)), cowl = loft(COWL, 1.75, 5.12, 50, 48);
   const fin = plate([[9.25, 1.48], [9.72, 2.24], [9.94, 2.26], [9.92, 1.42]], 0.07);
   const ventral = plate([[9.22, 1.30], [9.60, 0.64], [9.84, 0.64], [9.80, 1.28]], 0.06);
   const stab = plate([[7.0, -1.0], [7.55, -1.0], [7.55, 1.0], [7.0, 1.0]], 0.05, 'xz', 1.24);
@@ -126,7 +129,7 @@ export function buildBell505() {
   const sk = [], xt = [], H = DIM.skidHalf;
   for (const s of [-1, 1]) { sk.push(tube([[0.80, 0.30, s * H], [0.95, 0.11, s * H], [1.20, 0.05, s * H], [2.6, 0.05, s * H], [4.25, 0.05, s * H], [4.40, 0.08, s * H]], 0.04));
     sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.85, 0.27, s * 0.90)); }
-  for (const a of [1.58, 3.42]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.90], [a, 0.45, -0.68], [a, 0.51, -0.35], [a, 0.52, 0], [a, 0.51, 0.35], [a, 0.45, 0.68], [a, 0.30, 0.90], [a, 0.05, H]], 0.045));
+  for (const a of [1.58, 3.42]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.90], [a, 0.47, -0.68], [a, 0.54, -0.35], [a, 0.55, 0], [a, 0.54, 0.35], [a, 0.47, 0.68], [a, 0.30, 0.90], [a, 0.05, H]], 0.045));
   M('skids', merge(sk), new THREE.MeshStandardMaterial({ color: '#2c2d2f', roughness: 0.5, metalness: 0.3 }));
   M('xtubes', merge(xt), new THREE.MeshStandardMaterial({ color: '#232427', roughness: 0.5, metalness: 0.3 }));
   // ---------- main rotor: mast, swashplate, yoke, grips, pitch horns + links; 2 tapered blades

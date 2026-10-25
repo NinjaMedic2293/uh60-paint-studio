@@ -61,7 +61,7 @@ const skidMat = P.skids.material;
 const PRESETS = {
   'Plain bright red': { base: '#d4141c', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
 };
-const DEF = () => ({ aircraft: 'bell505', name: '', ...JSON.parse(JSON.stringify(PRESETS['Plain bright red'])), sk: { on: false, color: '#2b2b2b' }, tp: { on: false, color: '#ffffff' }, marks: [] });
+const DEF = () => ({ aircraft: 'bell505', name: '', ...JSON.parse(JSON.stringify(PRESETS['Plain bright red'])), glass: 'dark', sk: { on: false, color: '#2b2b2b' }, tp: { on: false, color: '#ffffff' }, marks: [] });
 let S = (() => { try { const s = JSON.parse(localStorage.getItem(CUR)); if (s && s.aircraft === 'bell505') return { ...DEF(), ...s }; } catch {} return DEF(); })();
 if (q.has('scheme')) try { S = { ...DEF(), ...JSON.parse(q.get('scheme')) }; } catch {}
 
@@ -71,18 +71,19 @@ function apply() {
   U.st.value.set(S.st.f, S.st.r, 0, S.st.on ? S.st.wIn * IN : 0); U.ac.value.set(S.ac.f, S.ac.r, S.ac.on ? 1 : 0, S.ac.boom ? 1 : 0);
   const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.28; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0;
   if (S.sk.on) { skidMat.color.set(S.sk.color); skidMat.metalness = 0.1; } else { skidMat.color.set('#2c2d2f'); skidMat.metalness = 0.3; }
+  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#141b20' : '#9fb6c4'); g.opacity = dk ? 0.86 : 0.42; g.envMapIntensity = dk ? 1.8 : 1.3; g.needsUpdate = true; }
   skidMat.roughness = matte ? 0.8 : 0.45; skidMat.needsUpdate = true;
   for (const t of TIPS) { t.tipOn.value = S.tp.on ? 1 : 0; t.tipC.value.set(S.tp.color); }
   MARKS.sync(S.marks); needs = true;
 }
 const save = () => { localStorage.setItem(CUR, JSON.stringify(S)); };
 const bind = (id, get, set, ev = 'input') => { $(id).addEventListener(ev, () => { set($(id).type === 'checkbox' ? $(id).checked : $(id).type === 'range' || $(id).type === 'number' ? +$(id).value : $(id).value); apply(); save(); }); };
-const F = [['base', () => S.base, v => S.base = v], ['finish', () => S.finish, v => S.finish = v],
+const F = [['base', () => S.base, v => S.base = v], ['finish', () => S.finish, v => S.finish = v], ['glass', () => S.glass || 'dark', v => S.glass = v],
   ['stOn', () => S.st.on, v => S.st.on = v], ['stColor', () => S.st.color, v => S.st.color = v], ['stW', () => S.st.wIn, v => S.st.wIn = v], ['stF', () => S.st.f, v => S.st.f = v], ['stR', () => S.st.r, v => S.st.r = v],
   ['acOn', () => S.ac.on, v => S.ac.on = v], ['acColor', () => S.ac.color, v => S.ac.color = v], ['acBoom', () => S.ac.boom, v => S.ac.boom = v], ['acF', () => S.ac.f, v => S.ac.f = v], ['acR', () => S.ac.r, v => S.ac.r = v],
   ['skOn', () => S.sk.on, v => S.sk.on = v], ['skColor', () => S.sk.color, v => S.sk.color = v], ['tpOn', () => S.tp.on, v => S.tp.on = v], ['tpColor', () => S.tp.color, v => S.tp.color = v]];
 function syncUI() { for (const [id, g] of F) { const e = $(id); if (e.type === 'checkbox') e.checked = g(); else e.value = g(); } $('name').value = S.name || ''; LET?.render(); }
-for (const [id, , s] of F) bind(id, null, s, ['finish'].includes(id) || $(id).type === 'checkbox' ? 'change' : 'input');
+for (const [id, , s] of F) bind(id, null, s, ['finish', 'glass'].includes(id) || $(id).type === 'checkbox' ? 'change' : 'input');
 $('preset').innerHTML = '<option value="">— choose —</option>' + Object.keys(PRESETS).map(k => `<option>${k}</option>`).join('');
 $('preset').onchange = e => { const p = PRESETS[e.target.value]; if (!p) return; Object.assign(S, JSON.parse(JSON.stringify(p))); syncUI(); apply(); save(); };
 
