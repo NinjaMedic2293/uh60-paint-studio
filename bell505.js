@@ -109,7 +109,7 @@ function apply() {
   U.st.value.set(S.st.f, S.st.r, 0, S.st.on ? S.st.wIn * IN : 0); U.ac.value.set(S.ac.f, S.ac.r, S.ac.on ? 1 : 0, S.ac.boom ? 1 : 0);
   const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.38; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0; body.clearcoat = matte ? 0 : 1; body.clearcoatRoughness = 0.06;
   if (S.sk.on) { skidMat.color.set(S.sk.color); skidMat.metalness = 0.1; } else { skidMat.color.set('#2c2d2f'); skidMat.metalness = 0.3; }
-  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#06080a' : '#9fb6c4'); g.opacity = dk ? 0.86 : 0.42; g.envMapIntensity = dk ? 7.0 : 1.8; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
+  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#141b20' : '#9fb6c4'); g.opacity = dk ? 0.66 : 0.40; g.envMapIntensity = dk ? 4.5 : 1.8; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
   skidMat.roughness = matte ? 0.8 : 0.45; skidMat.needsUpdate = true;
   for (const t of TIPS) { t.tipOn.value = S.tp.on ? 1 : 0; t.tipC.value.set(S.tp.color); }
   MARKS.sync(S.marks); needs = true;
