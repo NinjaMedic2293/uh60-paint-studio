@@ -111,17 +111,22 @@ export function fuselageOnly(mesh, matIndex) {
   out.computeBoundingSphere(); out.computeBoundingBox(); return m;
 }
 const ray = new THREE.Raycaster();
-export function surfaceAt(fm, a, y, side) {
+export function surfaceAt(fm, a, y, side, z = 0) {
+  if (side === 0) { // belly: cast upward from below at lateral offset z (metres, + = right side)
+    ray.set(new THREE.Vector3(NX - a, -2, z), new THREE.Vector3(0, 1, 0)); ray.far = 6;
+    const h = ray.intersectObject(fm, false)[0]; if (!h) return null;
+    const n = h.face.normal.clone().transformDirection(fm.matrixWorld); if (n.y > 0) n.negate(); return { p: h.point, n }; }
   ray.set(new THREE.Vector3(NX - a, y, side * 6), new THREE.Vector3(0, 0, -side)); ray.far = 12;
   const h = ray.intersectObject(fm, false).find(q => q.face && (q.point.z * side > 0)); if (!h) return null;
   const n = h.face.normal.clone().transformDirection(fm.matrixWorld); if (n.z * side < 0) n.negate();
   return { p: h.point, n };
 }
 function decalFor(fm, it, side, depth = 0.30) {
-  const s = surfaceAt(fm, it.a, it.y, side); if (!s) return null;
-  const dir = side; const art = artwork(it, dir);
-  const n = s.n.clone(); n.z = n.z * 0.7 + side * 0.3; n.normalize(); // bias toward the side normal for stability on tight curves
-  const yv = new THREE.Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize(); const xv = new THREE.Vector3().crossVectors(yv, n).normalize();
+  const s = surfaceAt(fm, it.a, it.y, side, it.z || 0); if (!s) return null;
+  const dir = side || 1; const art = artwork(it, dir);
+  const n = s.n.clone(); if (side) { n.z = n.z * 0.7 + side * 0.3; } else { n.y = n.y * 0.7 - 0.3; } n.normalize(); // bias toward the side / belly normal for stability on tight curves
+  // belly: letter tops point to the left side (-z) so text runs nose -> tail and reads unmirrored from below
+  const yv = side ? new THREE.Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize() : new THREE.Vector3(0, 0, -1).addScaledVector(n, n.z).normalize(); const xv = new THREE.Vector3().crossVectors(yv, n).normalize();
   const r = (it.rot || 0) * Math.PI / 180 * (side > 0 ? 1 : -1) * (it.kind === 'text' ? 1 : 1);
   const q = new THREE.Quaternion().setFromAxisAngle(n, r); xv.applyQuaternion(q); yv.applyQuaternion(q);
   const M = new THREE.Matrix4().makeBasis(xv, yv, n); const e = new THREE.Euler().setFromRotationMatrix(M);
@@ -139,7 +144,7 @@ function decalFor(fm, it, side, depth = 0.30) {
 // ---------- manager: caches built decals by item JSON so A|B compare and dragging stay cheap
 export function createMarks(scene, fm) {
   const root = new THREE.Group(); root.name = 'marks'; scene.add(root); const cache = new Map();
-  function build(it) { const g = new THREE.Group(); for (const side of it.both ? [1, -1] : [it.side || 1]) { const o = decalFor(fm, it, side); if (o) g.add(o); } return g; }
+  function build(it) { const g = new THREE.Group(); for (const side of it.side === 0 ? [0] : it.both ? [1, -1] : [it.side || 1]) { const o = decalFor(fm, it, side); if (o) g.add(o); } return g; }
   function sync(marks = []) {
     const want = new Set();
     for (const it of marks) { const key = JSON.stringify(it); want.add(key); if (!cache.has(key)) { const g = build(it); cache.set(key, g); root.add(g); } }

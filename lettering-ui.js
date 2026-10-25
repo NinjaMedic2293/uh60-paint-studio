@@ -13,11 +13,12 @@ export function setupLettering({ marks, fm, camera, renderer, controls, getS, on
     tip.textContent = `${label(it)}: ${it.hIn.toFixed(1)} in tall (${(it.hIn * 2.54).toFixed(1)} cm)${extra}`; }
   const label = it => it.kind === 'text' ? `“${it.text}”` : ({ jet: 'JET INTAKE chevron', danger: 'DANGER box', rescue: 'RESCUE arrow' })[it.kind];
   function hitMark(e) { ray.setFromCamera(ndc(e), camera); const h = ray.intersectObjects(marks.meshes(), false)[0]; return h ? h.object.userData : null; }
+  const belly = h => h.face && h.face.normal.clone().transformDirection(fm.matrixWorld).y < -0.6; // underside hit
   function hitSurf(e) { ray.setFromCamera(ndc(e), camera); return ray.intersectObject(fm, false)[0] || null; }
   const changed = (full = false) => { marks.sync(L()); requestDraw(); if (full) { render(); onChange(); } };
   el.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    if (placing) { const h = hitSurf(e); const it = byId(placing); if (h && it) { it.a = NX - h.point.x; it.y = h.point.y; it.side = h.point.z > 0 ? 1 : -1; sel = it.id; } placing = null; el.style.cursor = ''; eat = true; e.stopImmediatePropagation(); changed(true); return; }
+    if (placing) { const h = hitSurf(e); const it = byId(placing); if (h && it) { it.a = NX - h.point.x; it.y = h.point.y; it.side = belly(h) ? 0 : h.point.z > 0 ? 1 : -1; it.z = +h.point.z.toFixed(3); sel = it.id; } placing = null; el.style.cursor = ''; eat = true; e.stopImmediatePropagation(); changed(true); return; }
     const m = hitMark(e); if (!m) return;
     sel = m.mid; const it = byId(sel); if (!it) return;
     drag = { id: sel, side: m.side }; eat = true; controls.enabled = false; e.stopImmediatePropagation(); el.setPointerCapture(e.pointerId); render(); showTip(e, it);
@@ -25,7 +26,7 @@ export function setupLettering({ marks, fm, camera, renderer, controls, getS, on
   el.addEventListener('pointermove', e => {
     if (!drag) { const m = hitMark(e); el.style.cursor = placing ? 'crosshair' : m ? 'grab' : ''; return; }
     const it = byId(drag.id); const h = hitSurf(e); if (!it || !h) return;
-    it.a = +(NX - h.point.x).toFixed(3); it.y = +h.point.y.toFixed(3); const sd = h.point.z > 0 ? 1 : -1; if (!it.both) it.side = sd;
+    it.a = +(NX - h.point.x).toFixed(3); it.y = +h.point.y.toFixed(3); it.z = +h.point.z.toFixed(3); const sd = belly(h) ? 0 : h.point.z > 0 ? 1 : -1; if (!it.both || sd === 0 || it.side === 0) it.side = sd;
     showTip(e, it, `  @ ${(it.a / IN).toFixed(0)} in aft of nose, ${(it.y / IN).toFixed(0)} in above ground`); changed();
   });
   el.addEventListener('pointerup', e => { if (eat) { eat = false; e.stopImmediatePropagation(); } if (!drag) return; drag = null; controls.enabled = true; tip.hidden = true; changed(true); }, { capture: true });
@@ -50,8 +51,8 @@ export function setupLettering({ marks, fm, camera, renderer, controls, getS, on
       <div class="row"><input type="color" data-k="color" value="${it.color}" title="Colour">${isT ? `<input type="color" data-k="outline" value="${it.outline || '#ffffff'}" title="Outline colour"><label>Outline <input type="number" data-k="outlineIn" step="0.1" min="0" max="3" value="${it.outlineIn || 0}"> in</label>` : `<input type="color" data-k="color2" value="${it.color2}" title="Text / outline colour">`}</div>
       <div class="row"><label>Height <input type="number" data-k="hIn" step="0.5" min="0.5" max="96" value="${it.hIn}"> in</label><input type="range" data-k="hIn" min="0.5" max="48" step="0.5" value="${it.hIn}"><span class="hin">${it.hIn.toFixed(1)} in</span>${faaChk}${dsz}</div>
       <div class="row"><label>Rotate <input type="range" data-k="rot" min="-180" max="180" step="1" value="${it.rot || 0}"></label>${isT && !it.faa ? `<label>Width <input type="range" data-k="sx" min="0.5" max="1.6" step="0.02" value="${it.sx || 1}"></label>` : ''}</div>
-      <div class="row"><label><input type="checkbox" data-k="both" ${it.both ? 'checked' : ''}> Mirror to other side</label><select data-k="side" ${it.both ? 'disabled' : ''}><option value="1">Right side</option><option value="-1">Left side</option></select>
-        <span class="hint">${(it.a / IN).toFixed(0)} in aft, ${(it.y / IN).toFixed(0)} in up</span></div></div>`;
+      <div class="row"><label><input type="checkbox" data-k="both" ${it.both ? 'checked' : ''}> Mirror to other side</label><select data-k="side" ${it.both && it.side !== 0 ? 'disabled' : ''}><option value="1">Right side</option><option value="-1">Left side</option><option value="0">Bottom (belly)</option></select>
+        <span class="hint">${(it.a / IN).toFixed(0)} in aft, ${it.side === 0 ? `${((it.z || 0) / IN).toFixed(0)} in ${(it.z || 0) >= 0 ? 'right' : 'left'} of centre, underside` : `${(it.y / IN).toFixed(0)} in up`}</span></div></div>`;
   }
   function render() {
     const s = getS(); const box = $('marks'); box.innerHTML = L().map(row).join('') || '<em>No lettering. Add text or a quick-start below.</em>';

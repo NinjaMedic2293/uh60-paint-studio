@@ -11,6 +11,7 @@ import { buildHoist } from './hoist.js';
 import { kitMaterials, buildKits, buildSearchlight, buildProbe, buildBifilar, buildTanks, buildBypass, P } from './kits.js';
 import { buildDecals } from './decals.js';
 import { setupPaintTools } from './planes.js';
+import { setupStar } from './star-ui.js';
 
 const q = new URLSearchParams(location.search);
 const SHOT = q.has('shot'); if (SHOT) document.body.classList.add('shot');
@@ -64,6 +65,7 @@ await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = 
 let PROBE = null, probeKey = '';
 let LET = null;
 const TOOLS = setupPaintTools({ U, scene, camera, renderer, controls, mesh, fusMatIndex: GROUP.fuselage, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
+const STAR = setupStar({ fm: FM, camera, renderer, controls, getS: () => S, getDecals: () => decals, apply: () => apply(S) });
 LET = setupLettering({ marks: MARKS, fm: FM, camera, renderer, controls, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
 
 // ---------- scheme state
@@ -144,7 +146,7 @@ $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="col
 function syncUI() {
   TOOLS.sync(true);
   $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
-  $('finish').value = S.finish; migrate(S); LET?.render();
+  $('finish').value = S.finish; migrate(S); LET?.render(); STAR.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
 $('preset').onchange = e => { S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };

@@ -49,7 +49,7 @@ export function buildDecals(mesh, s) {
     for (const side of [1, -1]) {
       const geo = new DecalGeometry(mesh, P(st.a, st.y, side * 1.3), new THREE.Euler(0, side > 0 ? 0 : Math.PI, 0), new THREE.Vector3(st.size, st.size, 0.9));
       const o = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.6 }));
-      o.renderOrder = 2; g.add(o);
+      o.renderOrder = 2; o.userData.star = true; g.add(o);
     }
   }
   return g;
