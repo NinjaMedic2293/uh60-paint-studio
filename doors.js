@@ -4,21 +4,21 @@
 // so paint breaks, zones and the anti-glare are sampled where the panel sits when CLOSED (panel keeps its colours when slid).
 // Decals (lettering, star, RESCUE arrows) whose triangles lie on a panel get the same offset.
 //  - cabin door: rollers ride a joggle at the forward end of the upper/lower tracks: ~6 cm outboard, then ~1.66 m aft.
-//  - crew chief window: the whole window panel pops ~3 cm outboard, then slides FORWARD its full width on the outside of the skin,
-//    stowing between the opening and the pilot door so the gun opening is completely clear (user reference photos).
+//  - crew chief window: BOTH window panels behind the pilot door pop outboard (aft panel further, so it stacks outside the forward one)
+//    and slide FORWARD on the outside of the skin, stacked flush just aft of the pilot-door hinge strip (user reference photos).
 import * as THREE from 'three';
 const NX = 6.243;
 export const DOOR_DEF = {
   cabin: { a0: 3.750, a1: 5.522, y0: 0.70, y1: 2.215, z: 0.98, out: 0.065, aft: 1.66 },
-  win: { a0: 2.99, a1: 3.40, y0: 1.10, y1: 2.25, z: 0.95, out: 0.03, fwd: 0.399 },
+  win: { a0: 2.59, a1: 3.40, y0: 1.10, y1: 2.25, z: 0.95, out: [0.03, 0.06], stow: 2.230 },
 };
 export const DOOR_KEYS = [['rc', 'Right cabin door', 'cabin', 1], ['lc', 'Left cabin door', 'cabin', -1], ['rw', 'Right crew chief window', 'win', 1], ['lw', 'Left crew chief window', 'win', -1]];
 const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 // world-space offset of a panel at travel t (0 closed .. 1 open)
-function offset(kind, side, t) {
+function offset(kind, side, t, p = 0, amin = 0) {
   const D = DOOR_DEF[kind];
   if (kind === 'cabin') return new THREE.Vector3(-D.aft * ss(0.12, 1, t), 0, side * D.out * ss(0, 0.14, t));
-  return new THREE.Vector3(D.fwd * ss(0.2, 1, t), 0, side * D.out * ss(0, 0.2, t));
+  return new THREE.Vector3((amin - D.stow) * ss(0.2, 1, t), 0, side * D.out[p] * ss(0, 0.2, t));
 }
 const inBox = (D, side, a, y, z) => a > D.a0 && a < D.a1 && y > D.y0 && y < D.y1 && z * side > D.z;
 export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
@@ -27,7 +27,7 @@ export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
   const off = new THREE.BufferAttribute(new Float32Array(n * 3), 3); g.setAttribute('aDoorOff', off);
   const rest = P.array.slice(); const v = new THREE.Vector3();
   const wp = i => v.fromBufferAttribute(P, i).applyMatrix4(W);
-  const doors = {}; for (const [k, , kind, side] of DOOR_KEYS) doors[k] = { k, kind, side, t: 0, target: 0, verts: [] };
+  const doors = {}; for (const [k, , kind, side] of DOOR_KEYS) doors[k] = { k, kind, side, t: 0, target: 0, verts: [], parts: [[], []], amin: [0, 0] };
   const tris = { cabin: [], win: [] };
   for (const gr of g.groups) { if (!mats.includes(gr.materialIndex)) continue;
     for (let t = gr.start; t + 2 < gr.start + gr.count; t += 3) {
@@ -37,14 +37,16 @@ export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
       if (all.cabin[0]) doors.rc.verts.push(t, t + 1, t + 2); else if (all.cabin[1]) doors.lc.verts.push(t, t + 1, t + 2);
       else if (all.win[0] || all.win[1]) tris.win.push(t);
     } }
-  // crew chief window: keep only the window panel's own connected component(s) (the mesh models each pane as a separate shell)
+  // crew chief window: the two window panels' own connected component(s) (the mesh models each pane as a separate shell)
   const key = i => P.getX(i).toFixed(5) + ',' + P.getY(i).toFixed(5) + ',' + P.getZ(i).toFixed(5);
   const par = tris.win.map((_, i) => i), f = i => par[i] === i ? i : (par[i] = f(par[i])), H = new Map();
   tris.win.forEach((t, i) => { for (let j = 0; j < 3; j++) { const kk = key(t + j); if (H.has(kk)) par[f(i)] = f(H.get(kk)); else H.set(kk, i); } });
   const comp = new Map(); tris.win.forEach((t, i) => { const r = f(i); if (!comp.has(r)) comp.set(r, []); comp.get(r).push(t); });
   for (const list of comp.values()) { if (list.length < 30) continue; let amin = 9, amax = -9, zs = 0;
     for (const t of list) for (let j = 0; j < 3; j++) { const p = wp(t + j); amin = Math.min(amin, NX - p.x); amax = Math.max(amax, NX - p.x); zs += p.z; }
-    if (amin > DOOR_DEF.win.a0 && amax < DOOR_DEF.win.a1) { const d = zs > 0 ? doors.rw : doors.lw; for (const t of list) d.verts.push(t, t + 1, t + 2); } }
+    if (amin > DOOR_DEF.win.a0 && amax < DOOR_DEF.win.a1 && amax - amin < 0.45) { const d = zs > 0 ? doors.rw : doors.lw, p = amin < 2.9 ? 0 : 1; d.amin[p] = amin;
+      for (const t of list) { d.verts.push(t, t + 1, t + 2); d.parts[p].push(t, t + 1, t + 2); } } }
+  for (const k of ['rc', 'lc']) doors[k].parts[0] = doors[k].verts;
   const fills = new THREE.Group(); fills.name = 'doorFills';
   // dark door-jamb surfaces (the model's cabin floor already runs out to the sill) so the open cabin-door opening never shows a gap into the void (hidden while closed)
   if (fm) { const rc = new THREE.Raycaster(), jm = new THREE.MeshStandardMaterial({ color: '#2b2d2f', roughness: 0.9, side: THREE.DoubleSide });
@@ -57,10 +59,15 @@ export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
     for (const [k, side] of [['rc', 1], ['lc', -1]]) {
       // forward and aft jambs
       for (const a of [D.a0 + 0.004, D.a1 - 0.004]) { const j = []; for (let y = 0.712; y <= 2.2; y += 0.06) { const z = skin(a, y, side) || 1.1; j.push([[NX - a, y, z - 0.12], [NX - a, y, z - 0.012]]); } strip(j, side, k); }
+    }
+    // crew chief window opening: forward / aft jambs and sill / header strips
+    for (const [k, side] of [['rw', 1], ['lw', -1]]) {
+      for (const a of [2.601, 3.389]) { const j = []; for (let y = 1.19; y <= 2.2; y += 0.05) { const z = skin(a, y, side) || 1.2; j.push([[NX - a, y, z - 0.14], [NX - a, y, z - 0.012]]); } strip(j, side, k); }
+      for (const y of [1.192, 2.198]) { const j = []; for (let a = 2.6; a <= 3.391; a += 0.04) { const z = skin(a, y, side) || 1.2; j.push([[NX - a, y, z - 0.14], [NX - a, y, z - 0.012]]); } strip(j, side, k); }
     } }
+  const offL = (d, p, M) => offset(d.kind, d.side, d.t, p, d.amin[p]).applyMatrix3(M);
   function place(d) {
-    const o = offset(d.kind, d.side, d.t), ol = o.clone().applyMatrix3(L3);
-    for (const i of d.verts) { P.setXYZ(i, rest[i * 3] + ol.x, rest[i * 3 + 1] + ol.y, rest[i * 3 + 2] + ol.z); off.setXYZ(i, ol.x, ol.y, ol.z); }
+    for (let p = 0; p < 2; p++) { const ol = offL(d, p, L3); for (const i of d.parts[p]) { P.setXYZ(i, rest[i * 3] + ol.x, rest[i * 3 + 1] + ol.y, rest[i * 3 + 2] + ol.z); off.setXYZ(i, ol.x, ol.y, ol.z); } }
   }
   // decal meshes: per-vertex panel membership from the closed-position triangle centroid
   function decalInfo(m) {
@@ -69,7 +76,7 @@ export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
     for (let t = 0; t + 2 < pa.count; t += 3) { c.set(0, 0, 0); for (let j = 0; j < 3; j++) c.add(q.fromBufferAttribute(pa, t + j).applyMatrix4(Wm)); c.divideScalar(3);
       const a = NX - c.x; let d = null;
       for (const k in doors) { const D = doors[k]; if (D.kind === 'win' && !D.verts.length) continue; const B = DOOR_DEF[D.kind];
-        if (D.kind === 'cabin' ? inBox(B, D.side, a, c.y, c.z) : (a > 2.994 && a < 3.393 && c.y > B.y0 && c.y < B.y1 && c.z * D.side > B.z)) d = k; }
+        if (D.kind === 'cabin' ? inBox(B, D.side, a, c.y, c.z) : (a > 2.597 && a < 3.393 && c.y > B.y0 && c.y < B.y1 && c.z * D.side > B.z)) d = k + (D.kind === 'win' && a > 2.995 ? 1 : 0); }
       who[t] = who[t + 1] = who[t + 2] = d; }
     return geo.userData.door = { n: pa.count, who, rest: pa.array.slice(), any: who.some(x => x), L3: new THREE.Matrix3().setFromMatrix4(Wm.clone().invert()) };
   }
@@ -78,7 +85,7 @@ export function setupDoors(mesh, { mats = [31, 22, 34], fm = null } = {}) {
     for (const r of decalRoots) { const root = typeof r === 'function' ? r() : r; if (!root) continue;
       root.traverse(m => { if (!m.isMesh || !m.geometry?.attributes.position) return; const I = decalInfo(m); if (!I.any) return;
         const pa = m.geometry.attributes.position, cache = {};
-        for (let i = 0; i < I.n; i++) { const k = I.who[i]; if (!k) continue; const ol = cache[k] || (cache[k] = offset(doors[k].kind, doors[k].side, doors[k].t).applyMatrix3(I.L3));
+        for (let i = 0; i < I.n; i++) { const w = I.who[i]; if (!w) continue; const ol = cache[w] || (cache[w] = offL(doors[w.slice(0, 2)], +(w[2] || 0), I.L3));
           pa.setXYZ(i, I.rest[i * 3] + ol.x, I.rest[i * 3 + 1] + ol.y, I.rest[i * 3 + 2] + ol.z); }
         pa.needsUpdate = true; m.geometry.computeBoundingSphere(); }); }
   }
