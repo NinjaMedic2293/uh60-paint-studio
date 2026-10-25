@@ -13,9 +13,11 @@ const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e
 // v2 (photo-measured, main wheel 0.66 m as ruler): N8286 side drop (APF) skirt 1.46 m deep, bottom ~1.6 m below wheel bottoms,
 // front face ~31 deg / aft face ~32 deg from vertical, sides near-vertical, front of tank ~ main axle; VH-URS (brochure) depth ~1.3 m,
 // bottom ~1.2 m below wheels, snorkel ~3.7 m incl. a long slim pump head, pivot just aft of the left main wheel at shell height.
-// v3: capacity is the hard constraint. Shell (3.4 x 2.0 x 0.26, ~1.71 m3) + skirt (0.50 m deep, narrower top that flares
+// v4: bag is a smaller footprint than the 3.4 x 2.0 frame: top 2.6 x 1.6, 0.75 m deep, bottom ~2.27 x 1.70 (flare)
+// -> bag ~3.01 m3 + shell ~1.71 m3 = ~4.72 m3 (4500 L + 5%); total depth ~1.01 m = ~1.5x the 0.66 m main wheel (N8286/VH-URS).
+// (v3 note, superseded:) capacity is the hard constraint. Shell (3.4 x 2.0 x 0.26, ~1.71 m3) + skirt (0.50 m deep, narrower top that flares
 // 4 deg outward, 15/10 deg front/aft faces, flat bottom) = ~4.75 m3 = 4500 L + ~5% margin; bottom ~0.2 m below wheel bottoms.
-export const HT = { a0: 3.55, a1: 6.95, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 0.50, fSlope: 15, aSlope: 10, sSlope: -4, inset: 0.07,
+export const HT = { a0: 3.55, a1: 6.95, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 0.75, fSlope: 15, aSlope: 10, sSlope: -4, inset: 0.07, bagL: 2.6, bagW: 1.6,
   piv: [3.95, 0.50, -1.19], tube: 3.2, head: 0.55, hang: 0.17, stow: 1.505 };
 function mesh(g, m, pos, rot) { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; if (pos) o.position.copy(pos); if (rot) o.rotation.set(...rot); return o; }
 // rounded-rectangle outline (half sizes hx along x, hz along z, corner radius r), n points per corner
@@ -56,7 +58,7 @@ export function buildHelitak() {
   const seam = mesh(new THREE.BoxGeometry(1, 0.004, 0.012), M.strap); g.add(seam);
   const tn = d => Math.tan(d * Math.PI / 180);
   function shape(e) { // e: 0 retracted .. 1 extended. Flat sloped front/aft faces, near-vertical sides, small corner radius
-    const D = HT.band + (HT.depth - HT.band) * e, xf0 = X + L / 2 - HT.inset, xa0 = X - L / 2 + HT.inset, hw0 = HT.w / 2 - HT.inset; let xf, xa, hw, y;
+    const D = HT.band + (HT.depth - HT.band) * e, ix = HT.inset + e * ((L - HT.bagL) / 2 - HT.inset), iz = HT.inset + e * ((HT.w - HT.bagW) / 2 - HT.inset), xf0 = X + L / 2 - ix, xa0 = X - L / 2 + ix, hw0 = HT.w / 2 - iz; let xf, xa, hw, y;
     for (let r = 0; r < NR; r++) { const f = r / (NR - 1), d = D * f; y = yS - d;
       xf = xf0 - d * tn(HT.fSlope); xa = xa0 + d * tn(HT.aSlope); hw = hw0 - d * tn(HT.sSlope);
       const o = rrect((xf - xa) / 2, hw, 0.08), cx = (xf + xa) / 2;
