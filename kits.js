@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { BREAKS } from './paint.js';
+import { buildNoseMH60T } from './nose_mh60t.js';
 const NX = BREAKS.NX;
 export const P = (a, y, z) => new THREE.Vector3(NX - a, y, z);
 export function kitMaterials() {
@@ -74,17 +75,8 @@ function probe(base, mid, tip, r0, r1, M, paintMat) {
 }
 export function buildKits(M) {
   const K = {};
-  // ---------- MH-60T: blunt cylindrical radome on a square collar, black, 9-in chin ESS ball, aft chin dome
-  {
-    const g = new THREE.Group();
-    // radome ~0.56 m dia, protrudes ~0.5 m (scaled from photo 0 against the cockpit-door break); centred just below nose-tip height
-    const collar = mesh(new RoundedBoxGeometry(0.22, 0.66, 0.66, 4, 0.12), M.mission, P(0.03, 1.03, 0)); g.add(collar);
-    const rad = latheX(radomeProfile(0.28, 0.32, 0.19, 0.03), M.mission); rad.position.copy(P(0.10, 1.03, 0)); rad.castShadow = true; g.add(rad);
-    const seam = mesh(new THREE.TorusGeometry(0.282, 0.007, 6, 48), M.darkMetal, P(-0.04, 1.03, 0), [0, Math.PI / 2, 0]); g.add(seam);
-    // ESS turret: Star SAFIRE III class (15-in / 0.38 m housing per FLIR data; photo scales to ~0.32 m visible ball) hanging under the chin
-    const b = ball(0.33, M); b.position.copy(P(0.98, 0.46, 0)); g.add(b); g.add(neckAt(0.98, 0, 0.66, 0.58, 0.07, M));
-    K.mh60t = g;
-  }
+  // ---------- MH-60T: clean-sheet nose kit (radome lofted into the fuselage + EO/IR gimbal) in nose_mh60t.js
+  K.mh60t = buildNoseMH60T(M, P);
   // ---------- HH-60G: AN/APN-239 radar pod low on the LEFT chin, AN/AAQ-29A FLIR ball, refuelling probe on the right
   {
     const g = new THREE.Group();
