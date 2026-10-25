@@ -122,9 +122,10 @@ export function buildKits(M) {
     part('apq187-radome', 'AN/APQ-187 Silent Knight TF/TA radar (graphic: "AN/ALQ-187")', rd, rdSeam, rdBase, hood);
     // AN/ZSQ-2 EO targeting sensor: rounded housing directly below the radome with a gimballed ball and window
     const zH = mesh(new RoundedBoxGeometry(0.46, 0.24, 0.60, 4, 0.08), M.mission, P(0.14, 0.88, 0));
-    const zB = mesh(new THREE.SphereGeometry(0.27, 40, 28), M.mission, P(0.02, 0.62, 0));
-    const zW = mesh(new RoundedBoxGeometry(0.03, 0.20, 0.22, 2, 0.02), M.lens, P(-0.24, 0.62, 0.05));
-    const zL = mesh(new THREE.CircleGeometry(0.04, 24), M.lensGreen, P(-0.23, 0.66, -0.14), [0, Math.PI / 2, 0]);
+    // v10: ball centre 0.53 m below the radome centre (front photo nose_mh60m_046), tucked up into its housing
+    const zB = mesh(new THREE.SphereGeometry(0.27, 40, 28), M.mission, P(0.02, 0.80, 0));
+    const zW = mesh(new RoundedBoxGeometry(0.03, 0.20, 0.22, 2, 0.02), M.lens, P(-0.24, 0.80, 0.05));
+    const zL = mesh(new THREE.CircleGeometry(0.04, 24), M.lensGreen, P(-0.23, 0.84, -0.14), [0, Math.PI / 2, 0]);
     part('zsq2-turret', 'AN/ZSQ-2 electro-optical targeting sensor', zH, zB, zW, zL);
     // DVE LWIR sensor: small forward-looking pod beside the radome (aircraft right)
     const lw = mesh(new RoundedBoxGeometry(0.40, 0.25, 0.29, 4, 0.05), M.mission, P(0.36, 0.79, 0.50)); lw.castShadow = true;
@@ -207,13 +208,15 @@ export function buildBifilar(M, hub = [1.63, 0], y = 3.98) {
 }
 // Gimbaled searchlight (Trakkabeam-style) on a bracket outside the pilot's (right) door, with a real spot light
 export function buildSearchlight(M) {
-  const g = new THREE.Group();
-  // per user MH-60T photos: large gimbaled head low on the right forward fuselage, under the cockpit door
-  const br = mesh(new RoundedBoxGeometry(0.16, 0.22, 0.16, 2, 0.03), M.darkMetal, P(2.30, 0.86, 1.18)); g.add(br);
-  const fork = mesh(new THREE.TorusGeometry(0.19, 0.025, 8, 24, Math.PI), M.darkMetal, P(2.30, 0.70, 1.30), [0, Math.PI / 2, Math.PI]); g.add(fork);
-  const head = latheX([[0, 0], [0.15, 0], [0.17, 0.05], [0.17, 0.28], [0.18, 0.31], [0, 0.31]], M.mission); head.position.copy(P(2.40, 0.64, 1.30)); g.add(head);
-  const lamp = mesh(new THREE.CircleGeometry(0.165, 32), M.lamp, P(2.085, 0.64, 1.30), [0, Math.PI / 2, 0]); g.add(lamp);
-  const spot = new THREE.SpotLight('#fff3dc', 0, 60, 0.22, 0.4, 1.2); spot.position.copy(P(2.07, 0.64, 1.30)); spot.target.position.copy(P(-6, 0, 3.5)); spot.castShadow = false;
+  // v10: USCG MH-60T (6019 photos): gimballed searchlight under the chin on the centreline, ~0.85 m aft of the ESS ball (a~1.85)
+  const g = new THREE.Group(), A = 1.85, Y = 0.36;
+  const base = mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.05, 24), M.darkMetal, P(A, 0.565, 0)); g.add(base);
+  const post = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.10, 16), M.darkMetal, P(A, 0.50, 0)); g.add(post);
+  const yoke = mesh(new THREE.TorusGeometry(0.16, 0.025, 8, 24, Math.PI), M.darkMetal, P(A, 0.44, 0), [Math.PI, 0, 0]); yoke.rotation.set(Math.PI, Math.PI / 2, 0); yoke.position.y = 0.46; g.add(yoke);
+  for (const s of [1, -1]) g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 12), M.darkMetal, P(A, Y, s * 0.145), [Math.PI / 2, 0, 0]));
+  const head = latheX([[0, 0], [0.10, 0], [0.12, 0.05], [0.12, 0.30], [0.13, 0.33], [0, 0.33]], M.mission); head.position.copy(P(A + 0.15, Y, 0)); g.add(head);
+  const lamp = mesh(new THREE.CircleGeometry(0.12, 32), M.lamp, P(A - 0.185, Y, 0), [0, Math.PI / 2, 0]); g.add(lamp);
+  const spot = new THREE.SpotLight('#fff3dc', 0, 60, 0.22, 0.4, 1.2); spot.position.copy(P(A - 0.20, Y, 0)); spot.target.position.copy(P(-8, -1, 0)); spot.castShadow = false;
   g.add(spot, spot.target); g.userData.spot = spot; g.userData.lamp = M.lamp; g.name = 'searchlight';
   return g;
 }
@@ -239,10 +242,11 @@ export function buildTanks(M) {
     const AN = TANK_A, AS = AN + 1.00;
     const st = mesh(new RoundedBoxGeometry(0.50, 0.10, 0.85, 3, 0.04), M.tank, P(AS, 1.95, s * 1.62), [s * 0.35, 0, 0]); g.add(st);
     const py = mesh(new RoundedBoxGeometry(0.40, 0.30, 0.08, 2, 0.02), M.darkMetal, P(AS, 1.66, s * 1.98)); g.add(py);
-    const prof = [[0, 0], [0.12, 0.02], [0.22, 0.12], [0.28, 0.35], [0.29, 0.8], [0.29, 1.7], [0.289, 1.78], [0.27, 2.1], [0.18, 2.4], [0, 2.5]];
+    // v10: 120-gal tank, 2.90 m x 0.533 m (SeaCEFS 114 x 21 in), same nose station; profile = v8 shape scaled
+    const prof = [[0.0,  0.0],  [0.1103,  0.0232],  [0.2022,  0.1392],  [0.2573,  0.406],  [0.2665,  0.928],  [0.2665,  1.972],  [0.2656,  2.0648],  [0.2481,  2.436],  [0.1654,  2.784],  [0.0,  2.9]];
     // black front cap = nose dome plus a short band ending ~0.72 m back at a crisp edge (6003 photo)
-    const t = latheX(prof.slice(0, 7), M.tank, 40); t.position.copy(P(AN + 2.5, 1.30, s * 1.98)); t.castShadow = true; g.add(t);
-    const c = latheX(prof.slice(6), M.tankCap || M.tank, 40); c.position.copy(P(AN + 2.5, 1.30, s * 1.98)); c.castShadow = true; g.add(c);
+    const t = latheX(prof.slice(0, 7), M.tank, 40); t.position.copy(P(AN + 2.9, 1.30, s * 1.98)); t.castShadow = true; g.add(t);
+    const c = latheX(prof.slice(6), M.tankCap || M.tank, 40); c.position.copy(P(AN + 2.9, 1.30, s * 1.98)); c.castShadow = true; g.add(c);
   }
   return g;
 }

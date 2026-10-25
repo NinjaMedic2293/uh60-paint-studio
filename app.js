@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHeli, GROUP, removeRotorCap } from './model.js';
+import { fixGeometry } from './geomfix.js';
 import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
 import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS, markNacelles } from './paint.js';
 import { loadFonts, createMarks, fuselageOnly, migrate, USCG, FAA, newText } from './lettering.js';
@@ -35,6 +36,7 @@ controls.minDistance = 2; controls.maxDistance = 80; controls.maxPolarAngle = Ma
 const { holder, mesh } = await loadHeli();
 scene.add(holder);
 mesh.castShadow = mesh.receiveShadow = true;
+fixGeometry(mesh, GROUP, BREAKS.NX);
 window.__capTris = removeRotorCap(mesh, mesh.geometry.groups.findIndex(g => g.materialIndex === GROUP.mainRotor));
 const U = zoneUniforms();
 const mats = mesh.material;
