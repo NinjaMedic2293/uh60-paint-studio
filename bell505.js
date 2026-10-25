@@ -2,7 +2,6 @@
 // World frame matches the UH-60 page: nose tip at x = 6.243, +y up, +z right side, ground y = 0.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadFonts, createMarks, newText, IN } from './lettering.js';
 import { setupLettering } from './lettering-ui.js';
 import { buildBell505, DIM } from './bell505-model.js';
@@ -18,12 +17,24 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMappingExposure = 0.7; // deeper reds, closer to photos
 const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') || '#c9d3dc');
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 1.2;
-const sun = new THREE.DirectionalLight('#fff6ea', 0.9); sun.position.set(9, 16, 7); sun.castShadow = true;
+// procedural outdoor sky environment: warm hazy horizon, soft blue zenith, darker ground, sun glow + cloud bands (soft, natural reflections)
+{ const es = new THREE.Scene(), sg = new THREE.SphereGeometry(50, 64, 32), col = [], v = new THREE.Vector3(), sd = new THREE.Vector3(9, 16, 7).normalize();
+  const zen = new THREE.Color('#7f9cbc'), hor = new THREE.Color('#f2e8dc'), gnd = new THREE.Color('#5e5850'), sunC = new THREE.Color('#fff4e0');
+  for (let i = 0; i < sg.attributes.position.count; i++) { v.fromBufferAttribute(sg.attributes.position, i).normalize(); const c = new THREE.Color();
+    if (v.y >= 0) c.copy(hor).lerp(zen, Math.pow(v.y, 0.6)); else c.copy(hor).lerp(gnd, Math.min(1, -v.y * 6));
+    if (v.y > 0.05 && v.y < 0.4) c.lerp(new THREE.Color('#ffffff'), 0.9 * Math.pow(Math.max(0, Math.sin(v.x * 7 + v.z * 3)), 3) * (1 - Math.abs(v.y - 0.2) / 0.2));
+    c.lerp(sunC, Math.pow(Math.max(0, v.dot(sd)), 40)); c.multiplyScalar(1 + 6 * Math.pow(Math.max(0, v.dot(sd)), 400)); col.push(c.r, c.g, c.b); }
+  sg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); es.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(es, 0.02).texture; } scene.environmentIntensity = 1.5;
+const sun = new THREE.DirectionalLight('#fff1e0', 1.0); sun.position.set(9, 16, 7); sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 60 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
-scene.add(sun, new THREE.HemisphereLight('#dfe8f0', '#6b6257', 0.35));
+scene.add(sun, new THREE.HemisphereLight('#fff0dc', '#7a5844', 1.6));
 const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: '#8e8b84', roughness: 0.92 }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+{ const cv = document.createElement('canvas'); cv.width = cv.height = 256; const cx = cv.getContext('2d'), gr = cx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 256, 256);
+  const cs = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+  cs.scale.set(2.6, 1.3, 1); cs.rotation.x = -Math.PI / 2; cs.position.set(6.243 - 2.4, 0.004, 0); cs.renderOrder = 1; scene.add(cs); } // soft contact shadow / ambient occlusion under the airframe
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 400);
 const controls = new OrbitControls(camera, canvas); controls.enableDamping = true;
 controls.minDistance = 2; controls.maxDistance = 60; controls.maxPolarAngle = Math.PI * 0.995;
@@ -59,7 +70,7 @@ const skidMat = P.skids.material;
 
 // ---------- schemes
 const PRESETS = {
-  'Plain bright red': { base: '#ad150c', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
+  'Plain bright red': { base: '#c40c02', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
 };
 const DEF = () => ({ aircraft: 'bell505', name: '', ...JSON.parse(JSON.stringify(PRESETS['Plain bright red'])), glass: 'dark', sk: { on: false, color: '#2b2b2b' }, tp: { on: false, color: '#ffffff' }, marks: [] });
 let S = (() => { try { const s = JSON.parse(localStorage.getItem(CUR)); if (s && s.aircraft === 'bell505') return { ...DEF(), ...s }; } catch {} return DEF(); })();
@@ -69,9 +80,9 @@ let needs = true;
 function apply() {
   U.base.value.set(S.base); U.stC.value.set(S.st.color); U.acC.value.set(S.ac.color);
   U.st.value.set(S.st.f, S.st.r, 0, S.st.on ? S.st.wIn * IN : 0); U.ac.value.set(S.ac.f, S.ac.r, S.ac.on ? 1 : 0, S.ac.boom ? 1 : 0);
-  const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.28; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0;
+  const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.38; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0; body.clearcoat = matte ? 0 : 1; body.clearcoatRoughness = 0.06;
   if (S.sk.on) { skidMat.color.set(S.sk.color); skidMat.metalness = 0.1; } else { skidMat.color.set('#2c2d2f'); skidMat.metalness = 0.3; }
-  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#0b0f12' : '#9fb6c4'); g.opacity = dk ? 0.70 : 0.42; g.envMapIntensity = dk ? 3.5 : 1.3; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
+  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#0b0f12' : '#9fb6c4'); g.opacity = dk ? 0.82 : 0.42; g.envMapIntensity = dk ? 2.5 : 1.3; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
   skidMat.roughness = matte ? 0.8 : 0.45; skidMat.needsUpdate = true;
   for (const t of TIPS) { t.tipOn.value = S.tp.on ? 1 : 0; t.tipC.value.set(S.tp.color); }
   MARKS.sync(S.marks); needs = true;
