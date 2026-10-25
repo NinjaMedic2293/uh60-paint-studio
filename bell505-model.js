@@ -59,11 +59,11 @@ function patch(a0, a1, thLo, thHi, nu = 40, nv = 24, off = 0.008) { const pos = 
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
 const rr = (a, a0, a1, r) => { const d = Math.min(a - a0, a1 - a); return d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) ** 2)); };
 export const WIN = {
-  ws: { a0: 0.26, a1: 1.45, low: a => a < 0.7 ? 0.88 + 0.30 * (0.7 - a) : 0.88 + 0.10 * (a - 0.7) }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
-  door: { a0: 1.64, a1: 2.72, yb: 1.02, yt: 2.22, r: 0.16 }, rear: { a0: 2.86, a1: 3.14, yb: 1.12, yt: 2.10, r: 0.10 } };
+  ws: { a0: 0.26, a1: 1.64, low: a => a < 0.7 ? 0.88 + 0.30 * (0.7 - a) : 0.88 + 0.10 * (a - 0.7) }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
+  door: { a0: 1.74, a1: 2.74, yb: 0.98, yt: 2.28, r: 0.12 }, rear: { a0: 2.86, a1: 3.16, yb: 1.10, yt: 2.16, r: 0.10 } };
 const wsLo = a => Math.min(WIN.ws.low(a) + rr(a, WIN.ws.a0 - 0.25, WIN.ws.a1, 0.14), fusAt(a)[1] - 0.03);
 // red roof aft of the windscreen header: from WS_TOP aft the glass only covers the sides, up to wsHi(a)
-const WS_TOP = 1.38, wsHi = a => a < WS_TOP ? 9 : fusAt(a)[1] - 0.12 - 0.5 * (a - WS_TOP);
+const WS_TOP = 1.52, wsHi = a => a < WS_TOP ? 9 : fusAt(a)[1] - 0.10 - 0.5 * (a - WS_TOP);
 const inWin = (a, y, z) => { const W = WIN.ws; if (a > W.a0 && a < W.a1 && y > wsLo(a) && y < wsHi(a)) return true;
   if (Math.abs(z) < 0.3) return false; for (const w of [WIN.door, WIN.rear]) if (a > w.a0 && a < w.a1 && y > w.yb + rr(a, w.a0, w.a1, w.r) && y < w.yt - rr(a, w.a0, w.a1, w.r)) return true; return false; };
 // drop body faces behind the glass so the cabin can be seen through it
@@ -118,36 +118,41 @@ export function buildBell505() {
   inner.push(at(new THREE.BoxGeometry(0.50, 0.12, 1.30), 2.72, 0.98, 0), at(new THREE.BoxGeometry(0.10, 0.75, 1.30), 2.98, 1.38, 0));
   M('interior', merge(inner), new THREE.MeshStandardMaterial({ color: '#8f8068', roughness: 0.85 }));
   // trim: windscreen centre post, door seams, hinges + handles, intake grilles, angled exhaust outlet
-  const trim = frames();
+  const trim = frames(), soot = [];
   for (const s of [-1, 1]) { const pts = []; for (let a = 0.55; a <= 3.30; a += 0.05) { const y = 0.90 + 0.03 * (a - 0.55); pts.push([a, y, zAt(a, y, s) + s * 0.003]); } trim.push(tube(pts, 0.006, 4)); } // lower-body crease line
-  { const pts = []; for (let a = WIN.ws.a0 + 0.04; a <= WIN.ws.a1 - 0.02; a += 0.05) { const p = surfPt(a, Math.PI / 2, 0.012); pts.push([NX - p[0], p[1], 0]); } trim.push(tube(pts, 0.018, 6)); }
+  { const pts = []; for (let a = WIN.ws.a0 + 0.04; a <= WIN.ws.a1 - 0.02; a += 0.05) { const p = surfPt(a, Math.PI / 2, 0.012); pts.push([NX - p[0], p[1], 0]); } trim.push(tube(pts, 0.024, 8)); }
   for (const s of [-1, 1]) {
-    for (const [a, y0, y1] of [[1.58, 0.56, 2.28], [2.79, 0.56, 2.32], [3.20, 0.62, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
-    for (const [a, y] of [[1.62, 1.25], [1.62, 1.95], [2.83, 1.25], [2.83, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
+    for (const [a, y0, y1] of [[1.69, 0.56, 2.30], [2.80, 0.56, 2.32], [3.22, 0.62, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
+    for (const [a, y] of [[1.71, 1.25], [1.71, 1.95], [2.83, 1.25], [2.83, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
     for (const a of [2.68, 3.12]) trim.push(at(new THREE.BoxGeometry(0.17, 0.035, 0.03), a, 0.80, zAt(a, 0.80, s) + s * 0.016)); // handles
     trim.push(at(new THREE.BoxGeometry(0.55, 0.22, 0.03), 3.70, 2.30, s * 0.585));
-    for (let k = 0; k < 5; k++) trim.push(at(new THREE.BoxGeometry(0.53, 0.012, 0.045), 3.70, 2.22 + k * 0.042, s * 0.595)); }
+    for (let k = 0; k < 9; k++) trim.push(at(new THREE.BoxGeometry(0.53, 0.008, 0.05), 3.70, 2.205 + k * 0.024, s * 0.597));
+    for (let k = 0; k < 12; k++) trim.push(at(new THREE.BoxGeometry(0.006, 0.21, 0.05), 3.45 + k * 0.045, 2.30, s * 0.598));
+    trim.push(at(new THREE.BoxGeometry(0.60, 0.025, 0.06), 3.70, 2.42, s * 0.59), at(new THREE.BoxGeometry(0.60, 0.025, 0.06), 3.70, 2.18, s * 0.59)); }
   { const d = new THREE.Vector3(-0.55, 0.55, 0.62).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
     const ex = new THREE.CylinderGeometry(0.15, 0.13, 0.34, 28, 1, true); ex.applyQuaternion(q); trim.push(at(ex, 4.45, 2.24, 0.40));
-    const lip = new THREE.TorusGeometry(0.15, 0.015, 8, 28); lip.rotateX(Math.PI / 2); lip.translate(0, 0.17, 0); lip.applyQuaternion(q); trim.push(at(lip, 4.45, 2.24, 0.40)); }
+    const lip = new THREE.TorusGeometry(0.15, 0.015, 8, 28); lip.rotateX(Math.PI / 2); lip.translate(0, 0.17, 0); lip.applyQuaternion(q); trim.push(at(lip, 4.45, 2.24, 0.40));
+    const inn = new THREE.CylinderGeometry(0.125, 0.11, 0.30, 28, 1, true); inn.applyQuaternion(q); soot.push(at(inn, 4.45, 2.24, 0.40));
+    const sh = new THREE.CylinderGeometry(0.20, 0.20, 0.02, 28); sh.applyQuaternion(q); soot.push(at(sh, 4.40, 2.18, 0.34)); }
   // panel seams: nose cap, cabin/boom transition, boom joints (rings below any glass)
-  for (const [a, yl] of [[0.22, 1.00], [3.36, 9], [4.58, 9], [6.95, 9]]) for (const sd of [1, -1]) { const t1 = yl > 5 ? Math.PI / 2 : thOfY(a, yl, 1), pts = [];
+  for (const [a, yl] of [[0.22, 1.00], [0.40, 0.98], [3.36, 9], [4.58, 9], [6.95, 9]]) for (const sd of [1, -1]) { const t1 = yl > 5 ? Math.PI / 2 : thOfY(a, yl, 1), pts = [];
     for (let k = 0; k <= 40; k++) { const t = -Math.PI / 2 + (t1 + Math.PI / 2) * k / 40, th = sd > 0 ? t : Math.PI - t; const p = surfPt(a, th, 0.003); pts.push([NX - p[0], p[1], p[2]]); } trim.push(tube(pts, 0.005, 4)); }
   // antennas (belly + roof blades, VHF whip under the boom), skid shoes
   trim.push(at(new THREE.BoxGeometry(0.20, 0.12, 0.015), 2.55, 0.40, 0), at(new THREE.BoxGeometry(0.18, 0.11, 0.015), 4.05, 2.50, 0));
   { const w = new THREE.CylinderGeometry(0.006, 0.01, 0.55, 6); w.rotateZ(-0.5); trim.push(at(w, 5.6, 1.10, 0)); }
   M('trim', merge(trim), dark);
+  M('exhaust', merge(soot), new THREE.MeshStandardMaterial({ color: '#3a3532', roughness: 0.7, metalness: 0.6, side: THREE.DoubleSide }));
   // ---------- landing gear: skid tubes (paintable) + arched dark crosstubes, steps
   const sk = [], xt = [], H = DIM.skidHalf;
   for (const s of [-1, 1]) { sk.push(tube([[0.62, 0.28, s * H], [0.77, 0.11, s * H], [1.02, 0.05, s * H], [2.4, 0.05, s * H], [4.05, 0.05, s * H], [4.20, 0.08, s * H]], 0.04));
-    sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.70, 0.24, s * 0.82)); }
+    sk.push(tube([[1.44, 0.30, s * 0.80], [1.44, 0.30, s * 1.02], [1.86, 0.30, s * 1.02], [1.86, 0.30, s * 0.88]], 0.022, 8), at(new THREE.BoxGeometry(0.40, 0.012, 0.16), 1.65, 0.31, s * 0.95)); }
   for (const a of [1.44, 3.26]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.80], [a, 0.40, -0.62], [a, 0.45, -0.33], [a, 0.46, 0], [a, 0.45, 0.33], [a, 0.40, 0.62], [a, 0.30, 0.80], [a, 0.05, H]], 0.045));
   for (const s of [-1, 1]) for (const a of [1.55, 3.20]) sk.push(at(new THREE.BoxGeometry(0.30, 0.018, 0.05), a, 0.012, s * H));
   for (const s of [-1, 1]) sk.push(at(new THREE.SphereGeometry(0.04, 10, 8), 4.20, 0.08, s * H), at(new THREE.SphereGeometry(0.04, 10, 8), 0.62, 0.28, s * H));
   { const L = (c, e) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.2, roughness: 0.2 }), sph = (r) => new THREE.SphereGeometry(r, 12, 8);
     M('navR', merge([at(sph(0.035), 7.30, 1.50, -0.95), at(sph(0.03), 9.82, 2.28, 0)]), L('#ff2a1a', '#a00800'));
     M('navG', at(sph(0.035), 7.30, 1.50, 0.95), L('#2aff5a', '#00801a'));
-    M('navW', merge([at(sph(0.03), 9.99, 1.52, 0), at(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 20), 0.75, 0.47, 0)]), L('#ffffff', '#777766')); }
+    M('navW', merge([at(sph(0.03), 9.99, 1.52, 0), at(new THREE.CylinderGeometry(0.045, 0.045, 0.015, 20), 0.95, 0.455, 0)]), L('#ffffff', '#777766')); }
   M('skids', merge(sk), new THREE.MeshStandardMaterial({ color: '#2c2d2f', roughness: 0.5, metalness: 0.3 }));
   M('xtubes', merge(xt), new THREE.MeshStandardMaterial({ color: '#232427', roughness: 0.5, metalness: 0.3 }));
   // ---------- main rotor: mast, swashplate, yoke, grips, pitch horns + links; 2 tapered blades
@@ -159,13 +164,19 @@ export function buildBell505() {
     hub.push(at(new THREE.BoxGeometry(0.16, 0.03, 0.05), A + 0.10 * s, Y - 0.05, s * 0.40));
     hub.push(tube([[A + 0.17 * s, 2.77, s * 0.18], [A + 0.17 * s, Y - 0.05, s * 0.40]], 0.012, 6)); }
   hub.push(at(new THREE.SphereGeometry(0.05, 12, 8), A, Y + 0.12, 0));
+  hub.push(at(new THREE.CylinderGeometry(0.16, 0.24, 0.16, 24), A, 2.62, 0)); // mast base fairing
+  for (const s of [-1, 1]) { hub.push(tube([[A, 2.78, s * 0.20], [A + 0.12, 2.92, s * 0.16], [A, 3.02, s * 0.10]], 0.014, 6)); // scissors
+    hub.push(at(new THREE.BoxGeometry(0.08, 0.05, 0.06), A, Y - 0.07, s * 0.16), at(new THREE.CylinderGeometry(0.03, 0.03, 0.10, 10).rotateX(Math.PI / 2), A, Y + 0.04, s * 0.72)); }
+  for (let k = 0; k < 3; k++) { const t = k * 2.1; hub.push(tube([[A + 0.22 * Math.cos(t), 2.72, 0.22 * Math.sin(t)], [A + 0.24 * Math.cos(t), 2.60, 0.24 * Math.sin(t)]], 0.012, 6)); }
   M('mrhub', merge(hub), metal);
   const bl = []; for (const s of [-1, 1]) { const g = blade(0.70, DIM.mrR, 0.33, 0.16, DIM.mrR - 0.35, 0.10, -0.12); if (s < 0) g.rotateY(Math.PI); bl.push(at(g, A, Y + 0.01, 0)); }
   M('mrblade', merge(bl), new THREE.MeshStandardMaterial({ color: '#26282b', roughness: 0.5 }));
   // ---------- tail rotor on the left side of the fin
   const trz = -0.16;
-  M('trhub', merge([at(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 12).rotateX(Math.PI / 2), DIM.trA, DIM.trY, trz + 0.06), at(new THREE.BoxGeometry(0.12, 0.10, 0.08), DIM.trA, DIM.trY, trz)]), metal);
-  const tb = []; for (const s of [-1, 1]) { const g = blade(0.08, DIM.trR, 0.14, 0.11, DIM.trR - 0.12, 0.10); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI / 2); if (s < 0) g.rotateZ(Math.PI); g.rotateZ(0.5); tb.push(at(g, DIM.trA, DIM.trY, trz - 0.04)); }
-  M('trblade', merge(tb), new THREE.MeshStandardMaterial({ color: '#d8d8d8', roughness: 0.5 }));
+  const trx = [at(new THREE.BoxGeometry(0.30, 0.22, 0.16), DIM.trA + 0.05, DIM.trY, 0), at(new THREE.SphereGeometry(0.11, 16, 10), DIM.trA - 0.08, DIM.trY, 0), at(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 12).rotateX(Math.PI / 2), DIM.trA, DIM.trY, trz + 0.14)];
+  for (const s of [-1, 1]) trx.push(tube([[DIM.trA + 0.04, DIM.trY + s * 0.03, trz + 0.08], [DIM.trA + 0.02, DIM.trY + s * 0.13, trz - 0.02]], 0.008, 5));
+  M('trhub', merge([...trx, at(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 12).rotateX(Math.PI / 2), DIM.trA, DIM.trY, trz + 0.06), at(new THREE.BoxGeometry(0.12, 0.10, 0.08), DIM.trA, DIM.trY, trz)]), metal);
+  const tb = []; for (const s of [-1, 1]) { const g = blade(0.10, DIM.trR, 0.15, 0.12, DIM.trR - 0.10, 0.12); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI / 2); if (s < 0) g.rotateZ(Math.PI); g.rotateZ(0.5); tb.push(at(g, DIM.trA, DIM.trY, trz - 0.04)); }
+  M('trblade', merge(tb), new THREE.MeshStandardMaterial({ color: '#cfd0d0', roughness: 0.45, metalness: 0.3 }));
   return { root, P: meshes };
 }

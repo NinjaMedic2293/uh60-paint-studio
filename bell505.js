@@ -16,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMappingExposure = 0.7; // deeper reds, closer to photos
-const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') || '#c9d3dc');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') || '#c9d3dc'); const SKYBG = !q.get('bg');
 // procedural outdoor sky environment: warm hazy horizon, soft blue zenith, darker ground, sun glow + cloud bands (soft, natural reflections)
 { const es = new THREE.Scene(), sg = new THREE.SphereGeometry(50, 64, 32), col = [], v = new THREE.Vector3(), sd = new THREE.Vector3(9, 16, 7).normalize();
   const zen = new THREE.Color('#7f9cbc'), hor = new THREE.Color('#f2e8dc'), gnd = new THREE.Color('#5e5850'), sunC = new THREE.Color('#fff4e0');
@@ -25,11 +25,28 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') 
     if (v.y > 0.05 && v.y < 0.4) c.lerp(new THREE.Color('#ffffff'), 0.9 * Math.pow(Math.max(0, Math.sin(v.x * 7 + v.z * 3)), 3) * (1 - Math.abs(v.y - 0.2) / 0.2));
     c.lerp(sunC, Math.pow(Math.max(0, v.dot(sd)), 40)); c.multiplyScalar(1 + 6 * Math.pow(Math.max(0, v.dot(sd)), 400)); col.push(c.r, c.g, c.b); }
   sg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); es.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
-  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(es, 0.02).texture; } scene.environmentIntensity = 1.5;
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(es, 0.02).texture;
+  if (SKYBG) { // outdoor backdrop matching the env: equirect sky gradient with soft clouds and a distant treeline
+    const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 1024; const x = cv.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 512);
+    g.addColorStop(0, '#6f8fb3'); g.addColorStop(0.75, '#bfcad3'); g.addColorStop(1, '#e6e2da'); x.fillStyle = g; x.fillRect(0, 0, 2048, 512);
+    let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 60; k++) { const cx = 150 + rnd() * 1748, cy = 250 + rnd() * 220, r = 30 + rnd() * 90, gr = x.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(cx - r, cy - r, 2 * r, 2 * r); }
+    x.fillStyle = '#56624a'; x.beginPath(); x.moveTo(0, 512); for (let i = 0; i <= 2048; i += 2) x.lineTo(i, 512 - (2.5 + 3 * Math.abs(Math.sin(i * 0.011) + 0.6 * Math.sin(i * 0.047)) + 1.2 * Math.sin(i * 0.31) * Math.sin(i * 0.07))); x.lineTo(2048, 512); x.fill();
+    x.fillStyle = '#6d7457'; x.fillRect(0, 512, 2048, 512);
+    const t = new THREE.CanvasTexture(cv); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+    // sharp reflections: blend the detailed backdrop (clouds, treeline, horizon) into the environment
+    { const pm = new THREE.PMREMGenerator(renderer), es2 = new THREE.Scene(); es2.add(new THREE.Mesh(new THREE.SphereGeometry(50, 64, 32), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide }))); const sunM = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(8, 7.6, 7) })); sunM.position.copy(sd).multiplyScalar(45); es2.add(sunM); scene.environment = pm.fromScene(es2, 0).texture; } } } scene.environmentIntensity = 1.5;
 const sun = new THREE.DirectionalLight('#fff1e0', 1.0); sun.position.set(9, 16, 7); sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 60 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun, new THREE.HemisphereLight('#fff0dc', '#7a5844', 1.6));
-const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: '#8e8b84', roughness: 0.92 }));
+function groundMat() { if (!SKYBG) return new THREE.MeshStandardMaterial({ color: '#8e8b84', roughness: 0.92 });
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1024; const x = cv.getContext('2d'); x.fillStyle = '#5f6b3c'; x.fillRect(0, 0, 1024, 1024);
+  let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 160000; k++) { const v = 70 + rnd() * 50 | 0; x.fillStyle = `rgb(${v - 10},${v + 15},${v - 40})`; x.fillRect(rnd() * 1024, rnd() * 1024, 1, 1); }
+  const r = 512 * 9 / 80; x.fillStyle = '#6e6d69'; x.beginPath(); x.arc(512, 512, r, 0, 7); x.fill(); // tarmac pad under the aircraft
+  for (let k = 0; k < 6000; k++) { const a = rnd() * 7, d = Math.sqrt(rnd()) * r, v = 95 + rnd() * 30 | 0; x.fillStyle = `rgb(${v},${v},${v - 4})`; x.fillRect(512 + Math.cos(a) * d, 512 + Math.sin(a) * d, 1, 1); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }); }
+const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 64), groundMat());
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const cx = cv.getContext('2d'), gr = cx.createRadialGradient(128, 128, 10, 128, 128, 128);
   gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 256, 256);
@@ -49,13 +66,18 @@ const U = { base: { value: new THREE.Color() }, stC: { value: new THREE.Color() 
 const body = P.body.material; body.color.set('#ffffff');
 body.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW; varying vec3 vNw;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW = (modelMatrix * vec4(transformed, 1.0)).xyz; vNw = normalize(mat3(modelMatrix) * objectNormal);');
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+  sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor *= 0.8 + 0.4 * vn(vW * 6.0);').replace('#include <common>', `#include <common>
 varying vec3 vW; varying vec3 vNw; uniform vec3 base, stC, acC; uniform vec4 st, ac;
+float hn(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hn(i), hn(i + vec3(1,0,0)), f.x), mix(hn(i + vec3(0,1,0)), hn(i + vec3(1,1,0)), f.x), f.y), mix(mix(hn(i + vec3(0,0,1)), hn(i + vec3(1,0,1)), f.x), mix(hn(i + vec3(0,1,1)), hn(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float bakedAO() { vec3 n = normalize(vNw); float down = smoothstep(0.2, -0.9, n.y); float low = 1.0 - smoothstep(0.3, 1.4, vW.y);
+  return 1.0 - 0.35 * down - 0.15 * low * (0.5 + 0.5 * down); }
 vec3 zoneCol() { float a = ${NX.toFixed(3)} - vW.x; float t = clamp(a / 10.0, 0.0, 1.0); vec3 c = base;
   float aw = fwidth(vW.y) + 0.002;
   if (ac.z > 0.5 && (ac.w > 0.5 || a < 5.3)) { float ly = mix(ac.x, ac.y, t); c = mix(c, acC, 1.0 - smoothstep(ly - aw, ly + aw, vW.y)); }
   if (st.w > 0.0) { float cy = mix(st.x, st.y, t); float d = abs(vW.y - cy) - st.w * 0.5; c = mix(c, stC, (1.0 - smoothstep(-aw, aw, d)) * smoothstep(0.9, 0.75, abs(normalize(vNw).y))); }
-  return c; }`).replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = zoneCol();');
+  return c; }`).replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = zoneCol() * (0.97 + 0.06 * vn(vW * 2.5)) * bakedAO();');
 };
 // rotor tips: blades tinted beyond (radius - tipLen) from their hub
 const TU = { tipC: { value: new THREE.Color() }, tipOn: { value: 0 }, hub: { value: MR }, rTip: { value: 4.75 } };
@@ -82,7 +104,7 @@ function apply() {
   U.st.value.set(S.st.f, S.st.r, 0, S.st.on ? S.st.wIn * IN : 0); U.ac.value.set(S.ac.f, S.ac.r, S.ac.on ? 1 : 0, S.ac.boom ? 1 : 0);
   const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.38; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0; body.clearcoat = matte ? 0 : 1; body.clearcoatRoughness = 0.06;
   if (S.sk.on) { skidMat.color.set(S.sk.color); skidMat.metalness = 0.1; } else { skidMat.color.set('#2c2d2f'); skidMat.metalness = 0.3; }
-  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#0b0f12' : '#9fb6c4'); g.opacity = dk ? 0.82 : 0.42; g.envMapIntensity = dk ? 2.5 : 1.3; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
+  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#06080a' : '#9fb6c4'); g.opacity = dk ? 0.86 : 0.42; g.envMapIntensity = dk ? 7.0 : 1.8; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
   skidMat.roughness = matte ? 0.8 : 0.45; skidMat.needsUpdate = true;
   for (const t of TIPS) { t.tipOn.value = S.tp.on ? 1 : 0; t.tipC.value.set(S.tp.color); }
   MARKS.sync(S.marks); needs = true;
