@@ -37,10 +37,10 @@ function plate(outline, thick, plane = 'xy', zc = 0) {
 
 // ---------- fuselage: side profile (yb, yt) from c12/c17/c25, plan half-width and section shape from front/rear views (c22, c20) and specs
 export const FUS = [
-  [-0.06, 0.79, 0.80, 0.05, 2.0, 0.50, 2.0], [-0.02, 0.72, 0.90, 0.17, 2.0, 0.45, 2.0], [0.10, 0.67, 1.00, 0.27, 2.0, 0.42, 2.2], [0.25, 0.63, 1.13, 0.41, 2.1, 0.38, 2.6],
-  [0.45, 0.60, 1.31, 0.56, 2.1, 0.34, 3.0], [0.70, 0.56, 1.54, 0.68, 2.2, 0.31, 3.4], [1.00, 0.54, 1.81, 0.79, 2.3, 0.29, 3.8], [1.30, 0.53, 2.06, 0.83, 2.5, 0.28, 4.0],
-  [1.70, 0.53, 2.32, 0.84, 2.9, 0.28, 4.2], [2.30, 0.53, 2.39, 0.84, 2.9, 0.28, 4.2], [2.85, 0.56, 2.33, 0.81, 2.8, 0.30, 4.0], [3.30, 0.64, 2.25, 0.73, 2.7, 0.33, 3.4],
-  [3.90, 0.84, 2.14, 0.57, 2.6, 0.42, 2.8], [4.50, 1.08, 1.97, 0.40, 2.4, 0.50, 2.4], [5.10, 1.24, 1.79, 0.27, 2.2, 0.50, 2.2], [6.00, 1.32, 1.72, 0.22, 2.0, 0.50, 2.0],
+  [-0.06, 0.76, 0.80, 0.08, 2.0, 0.50, 2.0], [-0.02, 0.70, 0.92, 0.23, 2.0, 0.45, 2.0], [0.10, 0.63, 1.06, 0.35, 2.0, 0.42, 2.2], [0.25, 0.55, 1.22, 0.47, 2.1, 0.38, 2.6],
+  [0.45, 0.52, 1.50, 0.56, 2.1, 0.34, 3.0], [0.70, 0.50, 1.76, 0.68, 2.2, 0.31, 3.4], [1.00, 0.49, 2.02, 0.79, 2.3, 0.29, 3.8], [1.30, 0.49, 2.24, 0.83, 2.5, 0.28, 4.0],
+  [1.70, 0.49, 2.35, 0.84, 2.9, 0.28, 4.2], [2.30, 0.49, 2.39, 0.84, 2.9, 0.28, 4.2], [2.85, 0.50, 2.33, 0.81, 2.8, 0.30, 4.0], [3.30, 0.52, 2.25, 0.73, 2.7, 0.33, 3.4],
+  [3.90, 0.70, 2.14, 0.54, 2.6, 0.42, 2.8], [4.50, 0.98, 1.97, 0.36, 2.4, 0.50, 2.4], [5.10, 1.32, 1.74, 0.23, 2.2, 0.50, 2.2], [6.00, 1.36, 1.70, 0.19, 2.0, 0.50, 2.0],
   [8.00, 1.38, 1.68, 0.16, 2.0, 0.50, 2.0], [9.60, 1.41, 1.63, 0.11, 2.0, 0.50, 2.0], [9.95, 1.43, 1.61, 0.09, 2.0, 0.50, 2.0], [9.97, 1.50, 1.54, 0.01, 2.0, 0.50, 2.0]];
 export const COWL = [[1.75, 2.10, 2.27, 0.05, 3.0], [1.95, 2.10, 2.47, 0.50, 3.0], [2.50, 2.10, 2.60, 0.60, 3.0], [3.60, 2.10, 2.62, 0.60, 3.0],
   [4.20, 2.00, 2.36, 0.50, 3.2], [4.70, 1.90, 2.12, 0.36, 2.8], [5.00, 1.80, 1.98, 0.20, 2.4], [5.12, 1.76, 1.84, 0.03, 2.0]];
@@ -59,7 +59,7 @@ function patch(a0, a1, thLo, thHi, nu = 40, nv = 24, off = 0.008) { const pos = 
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
 const rr = (a, a0, a1, r) => { const d = Math.min(a - a0, a1 - a); return d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) ** 2)); };
 export const WIN = {
-  ws: { a0: 0.20, a1: 1.45, low: a => a < 0.6 ? 0.80 + 0.35 * (0.6 - a) : 0.80 }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
+  ws: { a0: 0.26, a1: 1.45, low: a => a < 0.7 ? 0.80 + 0.40 * (0.7 - a) : 0.80 }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
   door: { a0: 1.64, a1: 2.72, yb: 0.86, yt: 2.22, r: 0.16 }, rear: { a0: 2.86, a1: 3.14, yb: 1.05, yt: 2.10, r: 0.10 } };
 const wsLo = a => Math.min(WIN.ws.low(a) + rr(a, WIN.ws.a0 - 0.25, WIN.ws.a1, 0.14), fusAt(a)[1] - 0.03);
 // red roof aft of the windscreen header: from WS_TOP aft the glass only covers the sides, up to wsHi(a)
@@ -132,9 +132,9 @@ export function buildBell505() {
   M('trim', merge(trim), dark);
   // ---------- landing gear: skid tubes (paintable) + arched dark crosstubes, steps
   const sk = [], xt = [], H = DIM.skidHalf;
-  for (const s of [-1, 1]) { sk.push(tube([[0.80, 0.30, s * H], [0.95, 0.11, s * H], [1.20, 0.05, s * H], [2.6, 0.05, s * H], [4.25, 0.05, s * H], [4.40, 0.08, s * H]], 0.04));
-    sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.85, 0.27, s * 0.82)); }
-  for (const a of [1.58, 3.42]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.80], [a, 0.45, -0.62], [a, 0.52, -0.33], [a, 0.53, 0], [a, 0.52, 0.33], [a, 0.45, 0.62], [a, 0.30, 0.80], [a, 0.05, H]], 0.045));
+  for (const s of [-1, 1]) { sk.push(tube([[0.62, 0.28, s * H], [0.77, 0.11, s * H], [1.02, 0.05, s * H], [2.4, 0.05, s * H], [4.05, 0.05, s * H], [4.20, 0.08, s * H]], 0.04));
+    sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.70, 0.24, s * 0.82)); }
+  for (const a of [1.44, 3.26]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.80], [a, 0.42, -0.62], [a, 0.48, -0.33], [a, 0.49, 0], [a, 0.48, 0.33], [a, 0.42, 0.62], [a, 0.30, 0.80], [a, 0.05, H]], 0.045));
   M('skids', merge(sk), new THREE.MeshStandardMaterial({ color: '#2c2d2f', roughness: 0.5, metalness: 0.3 }));
   M('xtubes', merge(xt), new THREE.MeshStandardMaterial({ color: '#232427', roughness: 0.5, metalness: 0.3 }));
   // ---------- main rotor: mast, swashplate, yoke, grips, pitch horns + links; 2 tapered blades

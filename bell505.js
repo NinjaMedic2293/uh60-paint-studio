@@ -18,8 +18,8 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMappingExposure = 0.7; // deeper reds, closer to photos
 const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') || '#c9d3dc');
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.7;
-const sun = new THREE.DirectionalLight('#fff6ea', 2.2); sun.position.set(9, 16, 7); sun.castShadow = true;
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 1.2;
+const sun = new THREE.DirectionalLight('#fff6ea', 0.9); sun.position.set(9, 16, 7); sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 60 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun, new THREE.HemisphereLight('#dfe8f0', '#6b6257', 0.35));
 const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: '#8e8b84', roughness: 0.92 }));
@@ -59,7 +59,7 @@ const skidMat = P.skids.material;
 
 // ---------- schemes
 const PRESETS = {
-  'Plain bright red': { base: '#d4141c', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
+  'Plain bright red': { base: '#ad150c', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
 };
 const DEF = () => ({ aircraft: 'bell505', name: '', ...JSON.parse(JSON.stringify(PRESETS['Plain bright red'])), glass: 'dark', sk: { on: false, color: '#2b2b2b' }, tp: { on: false, color: '#ffffff' }, marks: [] });
 let S = (() => { try { const s = JSON.parse(localStorage.getItem(CUR)); if (s && s.aircraft === 'bell505') return { ...DEF(), ...s }; } catch {} return DEF(); })();
