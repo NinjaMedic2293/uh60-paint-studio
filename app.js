@@ -51,11 +51,12 @@ const KM = kitMaterials(); const KITS = buildKits(KM);
 for (const k in KITS) { KITS[k].visible = false; scene.add(KITS[k]); }
 const HOIST = buildHoist(KM); scene.add(HOIST);
 KM.tank = KM.hoist.clone(); KM.tankCap = new THREE.MeshPhysicalMaterial({ color: '#121212', roughness: 0.95, metalness: 0, clearcoat: 0 }); const TANKS = buildTanks(KM); scene.add(TANKS);
-KM.bypass = new THREE.MeshPhysicalMaterial({ color: '#888', roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide }); KM.bypassDark = new THREE.MeshStandardMaterial({ color: '#0b0b0b', roughness: 1, side: THREE.DoubleSide }); KM.bypassBolt = new THREE.MeshStandardMaterial({ color: '#777', roughness: 0.4, metalness: 0.6 }); const BYPASS = buildBypass(KM); scene.add(BYPASS);
+KM.bypass = new THREE.MeshPhysicalMaterial({ color: '#888', roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide }); KM.bypassDark = new THREE.MeshStandardMaterial({ color: '#0b0b0b', roughness: 1, side: THREE.DoubleSide }); KM.bypassBolt = new THREE.MeshStandardMaterial({ color: '#777', roughness: 0.4, metalness: 0.6 }); 
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
 const NACSEL = markNacelles(mesh, GROUP.fuselage, BREAKS.NX, mats[GROUP.fuselage].map.image);
+KM.skin = mats[GROUP.fuselage]; const BYPASS = buildBypass(KM, mesh); scene.add(BYPASS);
 await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = createMarks(scene, FM);
 let PROBE = null, probeKey = '';
 let LET = null;
@@ -78,7 +79,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   HOIST.visible = !!s.hoist; TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
   const pk = s.probeSide + '|' + s.nose;
   if (pk !== probeKey) { if (PROBE) scene.remove(PROBE); PROBE = buildProbe(KM, s.probeSide, s.nose); scene.add(PROBE); probeKey = pk; }
-  KM.bypass.color.copy(lin(s.colors.cowl || s.colors.upper)); KM.bypass.roughness = s.finish;
+  KM.bypass.color.copy(lin(s.colors.cowl || s.colors.upper)); KM.bypass.roughness = s.finish; KM.bypass.clearcoat = 0.3;
   PROBE.visible = !!s.probe; KM.probe.color.copy(lin(s.colors.mission)); KM.probe.roughness = s.finish;
   KITS.mh60m.traverse(o => { if (o.userData.lidar) o.visible = !!s.lidar; });
   LIGHT.visible = s.light || s.nose === 'mh60t';

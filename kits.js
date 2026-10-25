@@ -246,34 +246,57 @@ export function buildTanks(M) {
   }
   return g;
 }
-// v9: engine inlet particle-separator bypass/scavenge fairing, outboard side of each nacelle just aft of the inlet lip
-// sized from 6003/6008/6029 photos against the lip (lip OD ~0.64 m): ~0.40 m long, wraps ~115 deg of the nacelle, ~4 cm proud of the cowl
-export const BYP = { a0: 4.425, len: 0.40, r0: 0.285, r1: 0.335, ph0: -58, ph1: 58 };
-export function buildBypass(M) {
+// v9.1: inlet particle-separator bypass fairing, faired INTO the nacelle (6003/6008/6029 photos)
+// a displaced patch conformed to the real cowl (raycast), bump feathers to zero at top/bottom/aft; recessed pockets with dark walls
+export const BYP = { a0: 4.415, H: 0.46, ph: 70, bump: 0.066 };
+const sstep = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+export function buildBypass(M, cowl) {
   const g = new THREE.Group(); g.name = 'bypass'; g.userData.label = 'Engine inlet bypass fairings';
-  const D = Math.PI / 180, { a0, len, r0, r1 } = BYP;
-  // closed side profile (r, h): flat front against the lip, raised top, rounded aft roll-off down to the cowl
-  const pr = [[r0, 0], [r1 - 0.006, 0], [r1, 0.012], [r1, len - 0.12]];
-  for (let i = 1; i <= 8; i++) { const t = i / 8 * Math.PI / 2; pr.push([r0 + (r1 - r0) * Math.cos(t), len - 0.12 + 0.12 * Math.sin(t)]); }
-  const pts = pr.map(([r, h]) => new THREE.Vector2(r, h));
-  const shape = new THREE.Shape(pts);
-  const ph = (BYP.ph1 - BYP.ph0) * D, ps = BYP.ph0 * D;
-  const sec = (r, h, phi) => new THREE.Vector3(r * Math.sin(phi), h, r * Math.cos(phi));
+  const D = Math.PI / 180, rc = new THREE.Raycaster(), NP = 71, NH = 47;
+  const holes = [ // [phi0, phi1, h0, h1, depth(h)] upper opening angled & deeper, lower duct
+    { p0: 16, p1: 40, h0: 0.06, h1: 0.19, d: h => 0.036 + 0.024 * (h - 0.06) / 0.13 },
+    { p0: -40, p1: -18, h0: 0.07, h1: 0.21, d: () => 0.042 }];
+  const inHole = (p, h) => holes.find(o => p > o.p0 - 1e-6 && p < o.p1 + 1e-6 && h > o.h0 - 1e-6 && h < o.h1 + 1e-6);
+  cowl.updateMatrixWorld();
   for (const s of [1, -1]) {
-    const n = new THREE.Group(); n.position.copy(P(a0, 2.68, s * 0.965)); n.rotation.z = Math.PI / 2; if (s < 0) n.scale.z = -1;
-    // housing body + end caps
-    n.add(mesh(new THREE.LatheGeometry(pts, 28, ps, ph), M.bypass));
-    for (const phi of [ps, ps + ph]) { const c = mesh(new THREE.ShapeGeometry(shape), M.bypass); c.rotation.y = phi - Math.PI / 2; n.add(c); }
-    // openings: dark recessed rectangles on the outer face (upper scavenge opening, lower duct)
-    const hole = (phc, dphi, h0, h1) => { const gg = new THREE.LatheGeometry([new THREE.Vector2(r1 + 0.002, h0), new THREE.Vector2(r1 + 0.002, h1)], 10, (phc - dphi / 2) * D, dphi * D); n.add(mesh(gg, M.bypassDark));
-      // frame lip around the opening
-      for (const p of [phc - dphi / 2 - 2, phc + dphi / 2 + 2]) n.add(mesh(new THREE.BoxGeometry(0.012, h1 - h0 + 0.02, 0.014), M.bypass, sec(r1 + 0.004, (h0 + h1) / 2, p * D), [0, p * D, 0]));
-      for (const h of [h0 - 0.008, h1 + 0.008]) n.add(mesh(new THREE.LatheGeometry([new THREE.Vector2(r1 + 0.009, h - 0.006), new THREE.Vector2(r1 + 0.009, h + 0.006)], 10, (phc - dphi / 2 - 3) * D, (dphi + 6) * D), M.bypass)); };
-    hole(30, 30, 0.07, 0.20); hole(-32, 28, 0.08, 0.22);
-    // flat bolted strut/plate in the middle with fasteners
-    n.add(mesh(new THREE.BoxGeometry(0.11, 0.24, 0.016), M.bypass, sec(r1 + 0.008, 0.15, 0), [0, 0, 0]));
-    for (const [dp, h] of [[-0.035, 0.06], [0.035, 0.06], [-0.035, 0.24], [0.035, 0.24], [0, 0.15]]) n.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.006, 8), M.bypassBolt, new THREE.Vector3(dp, h, r1 + 0.018), [Math.PI / 2, 0, 0]));
-    g.add(n);
+    const W = (r, phd, h) => P(BYP.a0 + h, 2.68 + r * Math.sin(phd * D), s * (0.965 + r * Math.cos(phd * D)));
+    const R = [], F = [], UV = [];
+    for (let j = 0; j < NH; j++) { const h = j * BYP.H / (NH - 1); for (let i = 0; i < NP; i++) {
+      const phd = -BYP.ph + i * 2 * BYP.ph / (NP - 1); const o = W(0.9, phd, h), c = W(0, phd, h);
+      rc.set(o, c.clone().sub(o).normalize()); rc.far = 0.9; const hit = rc.intersectObject(cowl, false)[0];
+      let r = hit ? 0.9 - hit.distance : 0.30; UV.push(hit && hit.uv ? [hit.uv.x, hit.uv.y] : (UV.at(-1) || [0, 0]));
+      const f = sstep(BYP.ph, BYP.ph - 24, Math.abs(phd)) * sstep(BYP.H, 0.24, h);
+      R.push(r + 0.0025 + BYP.bump * f); F.push(f); } }
+    // the cowl is faceted: smooth the conformed radius a bit so the skin reads continuous
+    for (let it = 0; it < 3; it++) { const Q = R.slice(); for (let j = 1; j < NH - 1; j++) for (let i = 1; i < NP - 1; i++) { const k = j * NP + i; R[k] = (Q[k] * 4 + Q[k - 1] + Q[k + 1] + Q[k - NP] + Q[k + NP]) / 8; } }
+    const pos = [], idx = [], V = (i, j) => j * NP + i;
+    for (let j = 0; j < NH; j++) for (let i = 0; i < NP; i++) { const v = W(R[V(i, j)], -BYP.ph + i * 2 * BYP.ph / (NP - 1), j * BYP.H / (NH - 1)); pos.push(v.x, v.y, v.z); }
+    const dpos = [], didx = [], wall = (a, b, c, d) => { const n = dpos.length / 3; dpos.push(...a, ...b, ...c, ...d); didx.push(n, n + 1, n + 2, n, n + 2, n + 3); };
+    for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NP - 1; i++) {
+      const pc = -BYP.ph + (i + 0.5) * 2 * BYP.ph / (NP - 1), hc = (j + 0.5) * BYP.H / (NH - 1);
+      if (inHole(pc, hc)) continue; idx.push(V(i, j), V(i + 1, j), V(i + 1, j + 1), V(i, j), V(i + 1, j + 1), V(i, j + 1)); }
+    // pockets: walls from the opening edge straight inward, plus a floor
+    const ph = i => -BYP.ph + i * 2 * BYP.ph / (NP - 1), hh = j => j * BYP.H / (NH - 1);
+    const outer = (i, j) => W(R[V(i, j)], ph(i), hh(j)).toArray();
+    const inner = (o, i, j) => W(R[V(i, j)] - o.d(hh(j)), ph(i), hh(j)).toArray();
+    for (const o of holes) {
+      const I = [], J = []; for (let i = 0; i < NP; i++) if (ph(i) >= o.p0 - 1e-6 && ph(i) <= o.p1 + 1e-6) I.push(i); for (let j = 0; j < NH; j++) if (hh(j) >= o.h0 - 1e-6 && hh(j) <= o.h1 + 1e-6) J.push(j);
+      const i0 = I[0], i1 = I.at(-1), j0 = J[0], j1 = J.at(-1);
+      for (let i = i0; i < i1; i++) for (const j of [j0, j1]) wall(outer(i, j), outer(i + 1, j), inner(o, i + 1, j), inner(o, i, j));
+      for (let j = j0; j < j1; j++) for (const i of [i0, i1]) wall(outer(i, j), outer(i, j + 1), inner(o, i, j + 1), inner(o, i, j));
+      for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) wall(inner(o, i, j), inner(o, i + 1, j), inner(o, i + 1, j + 1), inner(o, i, j + 1));
+    }
+    const sk = new THREE.BufferGeometry(); sk.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sk.setIndex(idx); sk.computeVertexNormals(); sk.setAttribute('uv', new THREE.Float32BufferAttribute(UV.flat(), 2)); sk.setAttribute('aNac', new THREE.Float32BufferAttribute(new Float32Array(NP * NH), 1));
+    // orient normals outward
+    const nrm = sk.attributes.normal, k0 = V(35, 5), v0 = new THREE.Vector3().fromBufferAttribute(sk.attributes.position, k0), n0 = new THREE.Vector3().fromBufferAttribute(nrm, k0);
+    if (n0.z * s < 0) { for (let k = 0; k < idx.length; k += 3) [idx[k + 1], idx[k + 2]] = [idx[k + 2], idx[k + 1]]; sk.setIndex(idx); sk.computeVertexNormals(); }
+    g.add(mesh(sk, M.skin || M.bypass));
+    const pk = new THREE.BufferGeometry(); pk.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); pk.setIndex(didx); pk.computeVertexNormals(); g.add(mesh(pk, M.bypassDark));
+    // flush bolted strut plate between the openings: fasteners only, sitting on the skin
+    for (const [p, h] of [[-9, 0.07], [9, 0.07], [-9, 0.23], [9, 0.23], [0, 0.15]]) {
+      const i = Math.round((p + BYP.ph) / (2 * BYP.ph) * (NP - 1)), j = Math.round(h / BYP.H * (NH - 1)), r = R[V(i, j)];
+      const b = mesh(new THREE.SphereGeometry(0.007, 8, 6), M.bypassBolt, W(r - 0.003, p, h)); b.scale.set(1, 1, 1); g.add(b); }
+    // faint plate outline: thin dark strips flush on the skin
   }
   return g;
 }
