@@ -44,27 +44,42 @@ export function buildHoist(M) {
   // aft lean, then curves outboard into the inboard underside of the head (head sits above the outboard shoulder)
   const HX = P(3.90, 0, 0).x, HY = 3.02, HZ = 1.20, R = 0.20, SY = 1.32;   // head centre, half-width, vertical stretch
   g.add(sweep([P(FA, 2.32, 1.02), P(FA - 0.01, 2.46, 1.025), P(FA - 0.02, 2.58, 1.04), P(FA - 0.03, 2.67, 1.08), P(FA - 0.04, 2.74, 1.13), P(FA - 0.04, 2.80, 1.17)], 0.085, 0.055, paint, 1.15));
-  // ---- head: smooth tall helmet/teardrop, axis fore-aft, ~0.53 m tall x 0.40 m wide x 0.80 m long, narrowing toward the keel
-  const hp = []; for (let i = 0; i <= 24; i++) { const t = i / 24, x = -0.40 + 0.80 * t, e = Math.abs(2 * t - 1);
-    hp.push([R * Math.pow(Math.max(0, 1 - Math.pow(e, 6)), 0.5 / 1), x]); }
-  const head = latheX(hp, paint, new THREE.Vector3(HX, HY, HZ), SY, 64);
-  { const p = head.geometry.attributes.position, v = new THREE.Vector3();
-    for (let k = 0; k < p.count; k++) { v.fromBufferAttribute(p, k); if (v.y < 0) { const f = 1 - 0.42 * Math.pow(-v.y / (R * SY), 1.4); v.z *= f; } p.setXYZ(k, v.x, v.y, v.z); }
-    head.geometry.computeVertexNormals(); }
-  g.add(head);
+  // ---- head (v3.3): flat-sided fore-aft drum, ~0.95 m long x 0.50 m tall (~2:1 from the side). Section = tall helmet
+  // (as seen from the front in 4521): rounded top, flat sides, narrowing to a rounded keel. Ends are sculpted caps.
+  const L = 0.95, Hh = 0.50, Wd = 0.40;
+  const sec = (sc) => { const s = new THREE.Shape(), n = 64;
+    for (let i = 0; i <= n; i++) { const t = i / n * Math.PI * 2, c = Math.cos(t), sn = Math.sin(t);
+      const yy = Math.sign(c) * Math.pow(Math.abs(c), 0.55) * Hh / 2;                           // flat sides (superellipse)
+      const taper = yy < 0 ? 1 - 0.45 * Math.pow(-yy / (Hh / 2), 1.6) : 1;                         // narrower keel
+      const xx = Math.sign(sn) * Math.pow(Math.abs(sn), 0.55) * Wd / 2 * taper;
+      i ? s.lineTo(xx * sc, yy * sc) : s.moveTo(xx * sc, yy * sc); } return s; };
+  const bev = 0.07, drumG = new THREE.ExtrudeGeometry(sec(1 - 2 * bev / Wd * 0.9), { depth: L - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.9, bevelSegments: 10, curveSegments: 64 });
+  drumG.translate(0, 0, -(L - 2 * bev) / 2); drumG.rotateY(Math.PI / 2); drumG.computeVertexNormals();
+  const head = mesh(drumG, paint, new THREE.Vector3(HX, HY, HZ)); g.add(head);
+  head.onBeforeRender = () => shroud.color.copy(paint.color).multiplyScalar(0.32);
   // dark fairing on the inboard lower side, flowing down into the post top
-  const shroud2 = shroud; head.onBeforeRender = () => shroud2.color.copy(paint.color).multiplyScalar(0.32);
-  const fair = mesh(new THREE.SphereGeometry(1, 40, 24), shroud, new THREE.Vector3(HX + 0.04, HY - 0.15, HZ - 0.07)); fair.scale.set(0.32, 0.19, 0.135); g.add(fair);
-  const fair2 = mesh(new THREE.SphereGeometry(1, 28, 18), shroud, new THREE.Vector3(HX + 0.02, HY - 0.27, HZ - 0.04)); fair2.scale.set(0.12, 0.08, 0.075); g.add(fair2);
-  // front: large round cover plate high on the face
-  g.add(mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.014, 48), paint, new THREE.Vector3(HX + 0.385, HY + 0.08, HZ + 0.01), [0, 0, Math.PI / 2]));
-  g.add(mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.02, 12), darkSteel, new THREE.Vector3(HX + 0.395, HY + 0.08, HZ + 0.01), [0, 0, Math.PI / 2]));
-  // rear: big rectangular light over most of the aft face + bezel; data plate on the outboard side
-  g.add(mesh(new RoundedBoxGeometry(0.03, 0.27, 0.27, 2, 0.01), darkSteel, new THREE.Vector3(HX - 0.385, HY + 0.07, HZ)));
-  g.add(mesh(new RoundedBoxGeometry(0.014, 0.24, 0.24, 2, 0.006), lens, new THREE.Vector3(HX - 0.402, HY + 0.07, HZ)));
-  const dp = mesh(new THREE.BoxGeometry(0.16, 0.07, 0.004), plate, new THREE.Vector3(HX - 0.20, HY + 0.10, HZ + R + 0.003)); g.add(dp);
+  const fair = mesh(new THREE.SphereGeometry(1, 40, 24), shroud, new THREE.Vector3(HX + 0.06, HY - 0.15, HZ - 0.06)); fair.scale.set(0.36, 0.14, 0.13); g.add(fair);
+  const fair2 = mesh(new THREE.SphereGeometry(1, 28, 18), shroud, new THREE.Vector3(HX + 0.03, HY - 0.25, HZ - 0.04)); fair2.scale.set(0.13, 0.08, 0.075); g.add(fair2);
+  // forward end cap: large round cover plate high on the face (the helmet face seen in 4521)
+  const FE = HX + L / 2;
+  g.add(mesh(new THREE.CylinderGeometry(0.115, 0.12, 0.02, 48), paint, new THREE.Vector3(FE + 0.002, HY + 0.07, HZ), [0, 0, Math.PI / 2]));
+  for (let k = 0; k < 8; k++) { const t = k / 8 * Math.PI * 2;
+    g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.01, 8), darkSteel, new THREE.Vector3(FE + 0.014, HY + 0.07 + 0.1 * Math.sin(t), HZ + 0.1 * Math.cos(t)), [0, 0, Math.PI / 2])); }
+  g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.02, 12), darkSteel, new THREE.Vector3(FE + 0.015, HY + 0.07, HZ), [0, 0, Math.PI / 2]));
+  // aft end (above the hook): large framed rectangular lens recessed into the end face
+  const AE = HX - L / 2;
+  g.add(mesh(new RoundedBoxGeometry(0.05, 0.34, 0.30, 3, 0.02), darkSteel, new THREE.Vector3(AE + 0.005, HY + 0.03, HZ)));   // frame
+  g.add(mesh(new RoundedBoxGeometry(0.02, 0.27, 0.23, 2, 0.008), rubber, new THREE.Vector3(AE - 0.012, HY + 0.03, HZ)));    // recess
+  g.add(mesh(new RoundedBoxGeometry(0.012, 0.25, 0.21, 2, 0.006), lens, new THREE.Vector3(AE - 0.016, HY + 0.03, HZ)));     // lens
+  for (const dy of [-0.15, 0.15]) for (const dz of [-0.13, 0.13])
+    g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.01, 8), steel, new THREE.Vector3(AE - 0.022, HY + 0.03 + dy, HZ + dz), [0, 0, Math.PI / 2]));
+  // data plate on the upper outboard side near the aft end: dark plate with light text bands + rivets
+  const pz = HZ + Wd / 2 * 0.93, py = HY + 0.10, px = AE + 0.24;
+  g.add(mesh(new THREE.BoxGeometry(0.18, 0.09, 0.004), darkSteel, new THREE.Vector3(px, py, pz + 0.003)));
+  for (const dy of [-0.025, 0, 0.025]) g.add(mesh(new THREE.BoxGeometry(0.14, 0.008, 0.002), plate, new THREE.Vector3(px, py + dy, pz + 0.006)));
+  for (const dx of [-0.08, 0.08]) for (const dy of [-0.035, 0.035]) g.add(mesh(new THREE.SphereGeometry(0.005, 6, 4), steel, new THREE.Vector3(px + dx, py + dy, pz + 0.006)));
   // ---- cable exit under the aft-outboard bottom; long bumper/swivel cylinder directly under it, then the hook
-  const cx = HX - 0.22, cz = HZ + 0.015, yb = HY - R * SY * 0.86;
+  const cx = AE + 0.10, cz = HZ, yb = HY - Hh / 2 + 0.03;
   g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 24), darkSteel, new THREE.Vector3(cx, yb - 0.01, cz)));     // exit fairlead
   g.add(mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.22, 28), rubber, new THREE.Vector3(cx, yb - 0.14, cz)));     // bumper
   g.add(mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.03, 20), steel, new THREE.Vector3(cx, yb - 0.265, cz)));
