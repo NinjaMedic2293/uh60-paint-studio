@@ -57,8 +57,13 @@ function drawText(it) {
   const { c, g, k } = canvasFor(wIn, hIn);
   g.font = `${wt} ${fpi * capIn * k}px "${fam}"`; g.textBaseline = 'alphabetic';
   const base = (pad + capIn) * k;
+  const oth = glyphs.filter(q => q.ch !== ' ' && q.ch !== '1').map(q => q.w / q.nat).sort((a, b) => a - b);
+  const one = { sx: it.faa ? (oth.length ? oth[oth.length >> 1] : (capIn * 2 / 3) / (tmp.measureText('0').width / capPx * capIn)) : 1 };
   const pass = stroke => glyphs.forEach(q => { if (q.ch === ' ') return; g.save(); g.translate((pad + q.x) * k, base);
-    const sx = it.faa ? q.w / q.nat : (it.sx || 1); g.scale(sx, 1);
+    let sx = it.faa ? q.w / q.nat : (it.sx || 1);
+    if (it.faa && q.ch === '1') { // 45.29(c)/(d): '1' is a bar h/6 wide = the stroke width; never squash it, use the other glyphs' scale and centre its ink in the slot
+      sx = one.sx; const m = g.measureText('1'); g.translate((q.w * k - (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) * sx) / 2 + m.actualBoundingBoxLeft * sx, 0); }
+    g.scale(sx, 1);
     if (stroke) g.strokeText(q.ch, 0, 0); else g.fillText(q.ch, 0, 0); g.restore(); });
   if (it.outlineIn > 0) { g.strokeStyle = it.outline || '#fff'; g.lineJoin = 'round'; g.lineWidth = it.outlineIn * 2 * k; pass(true); }
   g.fillStyle = it.color; pass(false);
