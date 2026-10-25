@@ -90,7 +90,7 @@ $('preset').onchange = e => { const p = PRESETS[e.target.value]; if (!p) return;
 await loadFonts(); const MARKS = createMarks(scene, P.body);
 P.body.updateMatrixWorld(true);
 let LET = setupLettering({ marks: MARKS, fm: P.body, camera, renderer, controls, getS: () => S, onChange: () => { needs = true; save(); }, requestDraw: () => { needs = true; } });
-$('bellN').onclick = () => { S.marks.push(newText({ text: 'N505JX', font: 'Barlow', hIn: 12, a: 6.55, y: 1.66, faa: true, color: '#111111' })); LET.sync(); apply(); save(); };
+$('bellN').onclick = () => { S.marks.push(newText({ text: 'N505JX', font: 'Barlow', hIn: 12, a: 6.55, y: 1.40, faa: true, color: '#111111' })); LET.sync(); apply(); save(); };
 $('bellBelly').onclick = () => { S.marks.push(newText({ text: 'N505JX', font: 'Barlow', hIn: 12, a: 1.75, y: 0.4, side: 0, z: 0, both: false, faa: true, color: '#111111' })); LET.sync(); apply(); save(); };
 
 // ---------- saved schemes
