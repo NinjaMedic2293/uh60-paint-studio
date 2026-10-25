@@ -34,9 +34,11 @@ export const AG_BELLY_PIDS = [3, 9, 17, 23, 27, 34, 66];
 export const AG_BREAK_A = 1.19; // cockpit-door forward frame seam (MH-60T 6003/6008)
 export const AG_POST_K = 0.56, AG_POST_Y = 1.45; // break rakes aft up the windscreen post
 // v10.2: post black widened aft (6003/6008/6029: black ~0.08 m wider than the glass edge, onto the door frame);
-// v10.3: the post widening steps aft at a crisp corner at the 1.45 m sill (6003).
+// v10.4 (6003 matched-camera overlay): no sill step; door-window forward/upper frame stays body colour; a black
+// 'eyebrow' runs along the roof rail above the door window (y>AG_BROW_Y) from the windscreen aft to the door aft frame.
+export const AG_BROW_Y = 2.17, AG_BROW_A = 2.17;
 // bottom of the break curves forward around the chin-window frame's lower-aft corner into the belly (6003).
-export const AG_POST_W = 0.08, AG_CHIN_DA = 0.12, AG_CHIN_Y0 = 0.90, AG_CHIN_Y1 = 0.62;
+export const AG_POST_W = 0.0, AG_CHIN_DA = 0.12, AG_CHIN_Y0 = 0.90, AG_CHIN_Y1 = 0.62;
 const pidList = (L) => L.map(i => `abs(id-${i}.0)<0.5`).join(' || ');
 
 export const AGQ = [2.40, 2.28, 0.95, 0];
@@ -79,6 +81,7 @@ const AGPAN = `float agBrk(float y){ float c=smoothstep(${glsl(AG_CHIN_Y0)},${gl
 bool agPan(vec2 uv, vec3 w){ if(uPanOn<0.5) return agf(w) && vNac<2.5;
   float id=floor(texture2D(uPanId,uv).r*255.0+0.5); float a=${glsl(B.NX)}-w.x;
   if(abs(id-${AG_DOOR_PID}.0)<0.5) return false;
+  if(w.y>${glsl(AG_BROW_Y)} && a<${glsl(AG_BROW_A)} && a>0.8) return true;
   if(${pidList(AG_NOSE_PIDS)}) return a < agBrk(w.y) || (w.y>uAGq.y && agf(w));
   if(${pidList(AG_BELLY_PIDS)}) return a<agBrk(w.y);
   return w.y>uAGq.y && agf(w); }`;
