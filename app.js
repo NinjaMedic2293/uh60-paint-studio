@@ -15,6 +15,7 @@ import { setupPaintTools } from './planes.js';
 import { setupStar } from './star-ui.js';
 import { setupDoors, DOOR_KEYS } from './doors.js';
 import { buildHelitak } from './helitak.js';
+import { setupSeats, SEAT_KEYS } from './seats.js';
 
 const q = new URLSearchParams(location.search);
 const SHOT = q.has('shot'); if (SHOT) document.body.classList.add('shot');
@@ -69,6 +70,7 @@ KM.skin = mats[GROUP.fuselage]; const BYPASS = buildBypass(KM, mesh); scene.add(
 await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = createMarks(scene, FM);
 // opening cabin doors / crew chief windows (doors.js): panels cut out of the fuselage mesh, paint sampled closed
 const DOORS = setupDoors(mesh, { fm: FM }); scene.add(DOORS.fills); DOORS.addDecalRoot(MARKS.root); DOORS.addDecalRoot(() => decals);
+const SEATS = setupSeats(mesh); window.__seats = SEATS;
 let PROBE = null, probeKey = '';
 let LET = null;
 const TOOLS = setupPaintTools({ U, scene, camera, renderer, controls, mesh, fusMatIndex: GROUP.fuselage, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
@@ -102,6 +104,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   if (rebuildDecals && key !== decalKey) { if (decals) { scene.remove(decals); decals.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
     decals = DOORS.withClosed(() => buildDecals(mesh, s)); scene.add(decals); decalKey = key; }
   DOORS.set(s.doors || {}, !!s.doorsInstant); delete s.doorsInstant;
+  SEATS.set(s); /* removable cabin seats (seats.js) */
   needs = true;
 }
 // ---------- views
@@ -157,6 +160,7 @@ function syncUI() {
   TOOLS.sync(true);
   $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps', 'helitak', 'helitakMatch'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right'; $('helitakExt').value = S.helitakExt ? '1' : '0';
   DOOR_KEYS.forEach(([k]) => $('door_' + k).checked = !!(S.doors && S.doors[k]));
+  SEAT_KEYS.forEach(([k]) => $(k).checked = !!S[k]);
   $('finish').value = S.finish; migrate(S); LET?.render(); STAR.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
@@ -166,6 +170,8 @@ $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
 $('helitakExt').onchange = e => { S.helitakExt = e.target.value === '1'; apply(S); };
 ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps', 'helitak', 'helitakMatch'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 $('doorsRow').innerHTML = DOOR_KEYS.map(([k, l]) => `<label><input type="checkbox" id="door_${k}"> ${l}</label>`).join('');
+$('seatsRow').innerHTML = SEAT_KEYS.map(([k, l]) => `<label><input type="checkbox" id="${k}"> ${l}</label>`).join('');
+SEAT_KEYS.forEach(([k]) => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 DOOR_KEYS.forEach(([k]) => $('door_' + k).onchange = e => { S.doors = { ...(S.doors || {}), [k]: e.target.checked }; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
 document.querySelectorAll('[data-z]').forEach(i => i.oninput = () => { S.colors[i.dataset.z] = i.value; apply(S); });
