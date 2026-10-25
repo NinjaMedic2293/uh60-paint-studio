@@ -26,7 +26,7 @@ function sweep(pts, r0, r1, m, ax = 1.0) {
 export function buildHoist(M) {
   const g = new THREE.Group();
   const paint = M.hoist;
-  const shroud = paint.clone(); shroud.roughness = 0.6;
+  const shroud = paint.clone(); shroud.roughness = 0.65; // darker lower fairing: tracks the scheme hoist colour at 55%
   const steel = new THREE.MeshPhysicalMaterial({ color: '#b9bdc1', roughness: 0.28, metalness: 1.0 });
   const darkSteel = new THREE.MeshPhysicalMaterial({ color: '#36383b', roughness: 0.45, metalness: 0.85 });
   const cableM = new THREE.MeshPhysicalMaterial({ color: '#8d9196', roughness: 0.35, metalness: 1.0 });
@@ -40,40 +40,36 @@ export function buildHoist(M) {
   for (const da of [-0.15, -0.05, 0.05, 0.15]) for (const dz of [-0.1, 0.1])
     g.add(mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.012, 8), darkSteel, P(FA + da, 2.325 - dz * 0.42, 1.02 + dz), [0.42, 0, 0]));
   g.add(mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.06, 28), paint, P(FA, 2.33, 1.02)));          // base fitting
-  // ---- gooseneck mast: up from the shoulder, curving outboard into the head underside (oval, wider fore-aft)
-  const top = P(FA, 2.87, 1.48);
-  g.add(sweep([P(FA, 2.33, 1.02), P(FA, 2.48, 1.07), P(FA, 2.65, 1.25), P(FA, 2.78, 1.40), top], 0.06, 0.068, paint, 1.35));
-  // shroud where the mast meets the head (dark, smooth fairing under the head)
-  const sh = mesh(new THREE.SphereGeometry(1, 32, 20), shroud, P(FA - 0.02, 2.88, 1.47)); sh.scale.set(0.22, 0.09, 0.14); g.add(sh);
-
-  // ---- hoist head, axis fore-aft. x-offsets in the lathe: aft (-) to forward (+); length 0.70 m
-  const HA = 3.87, C = P(HA, 3.06, 1.50); const n0 = g.children.length;
-  const prof = [[0, -0.35], [0.13, -0.35], [0.145, -0.34], [0.16, -0.32], [0.165, -0.10], [0.165, 0.22], [0.16, 0.29], [0.14, 0.33], [0.11, 0.35], [0, 0.352]];
-  g.add(latheX(prof, paint, C, 1.30));
-  // keel: the drum fairing narrows downward (teardrop section in the front view)
-  const keel = mesh(new THREE.SphereGeometry(1, 32, 16), paint, new THREE.Vector3(C.x - 0.02, C.y - 0.13, C.z + 0.01)); keel.scale.set(0.30, 0.12, 0.11); g.add(keel);
-  // forward disk cover with centre bolt
-  g.add(mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.012, 40), paint, new THREE.Vector3(C.x + 0.352, C.y + 0.05, C.z + 0.02), [0, 0, Math.PI / 2]));
-  g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 12), darkSteel, new THREE.Vector3(C.x + 0.362, C.y + 0.05, C.z + 0.02), [0, 0, Math.PI / 2]));
-  // housing seam bands
-  for (const dx of [-0.30, 0.20]) { const t = mesh(new THREE.TorusGeometry(0.165, 0.006, 8, 48), darkSteel, new THREE.Vector3(C.x + dx, C.y, C.z), [0, Math.PI / 2, 0]); t.scale.set(1, 1.30, 1); g.add(t); }
-  // aft end: rectangular light lens + data plate (outboard)
-  g.add(mesh(new RoundedBoxGeometry(0.012, 0.09, 0.20, 2, 0.004), lens, new THREE.Vector3(C.x - 0.355, C.y - 0.06, C.z)));
-  g.add(mesh(new THREE.BoxGeometry(0.16, 0.06, 0.004), plate, new THREE.Vector3(C.x - 0.22, C.y + 0.07, C.z + 0.167)));
-  // ---- cable exit under the AFT end, bumper, swivel, hook (stowed)
-  const cx = C.x - 0.29, cz = C.z + 0.03, yb = C.y - 0.33;
-  g.add(mesh(new RoundedBoxGeometry(0.10, 0.05, 0.09, 2, 0.02), darkSteel, new THREE.Vector3(cx, C.y - 0.235, cz)));          // fairlead
-  g.add(mesh(new THREE.CylinderGeometry(0.0024, 0.0024, 0.05, 8), cableM, new THREE.Vector3(cx, C.y - 0.27, cz)));
-  g.add(mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.11, 24), rubber, new THREE.Vector3(cx, yb, cz)));                     // bumper
-  g.add(mesh(new THREE.CylinderGeometry(0.02, 0.026, 0.07, 16), steel, new THREE.Vector3(cx, yb - 0.09, cz)));                // swivel
-  g.add(mesh(new RoundedBoxGeometry(0.03, 0.06, 0.03, 2, 0.01), steel, new THREE.Vector3(cx, yb - 0.16, cz)));
+  // ---- gooseneck post (v3.1): slim, leaves the shoulder rising outboard, then a tight bend up into the head underside
+  const HX = P(3.87, 0, 0).x, HY = 3.06, HZ = 1.50;          // head centre
+  g.add(sweep([P(FA, 2.33, 1.00), P(FA, 2.47, 1.13), P(FA, 2.60, 1.29), P(FA - 0.01, 2.70, 1.41), P(FA - 0.02, 2.78, 1.47), P(FA - 0.02, 2.87, 1.49)], 0.048, 0.052, paint, 1.25));
+  // ---- head: teardrop section (wide rounded top, tapering to a narrow rounded keel), axis fore-aft
+  const W = 0.165, Hb = 0.20;                                 // half-width at top, depth below centre
+  const teardrop = (w, top, bot, kw) => { const s = new THREE.Shape(); const cy = top - w;
+    s.moveTo(kw, bot + kw); s.absarc(0, bot + kw, kw, 0, Math.PI, true); s.lineTo(-w, cy); s.absarc(0, cy, w, Math.PI, 0, true); s.lineTo(kw, bot + kw); return s; };
+  const ext = (shape, len, bev, m) => { const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.8, bevelSegments: 6, curveSegments: 28 });
+    geo.translate(0, 0, -len / 2); geo.rotateY(Math.PI / 2); return mesh(geo, m, new THREE.Vector3(HX, HY, HZ)); };
+  const housing = ext(teardrop(W - 0.035, 0.20 - 0.035, -Hb + 0.035, 0.05), 0.70, 0.05, paint); g.add(housing);          // housing
+  housing.onBeforeRender = () => shroud.color.copy(paint.color).multiplyScalar(0.55); // 0.84 m incl. rounded ends
+  g.add(ext(teardrop(W - 0.04, -0.035, -Hb + 0.030, 0.052), 0.66, 0.05, shroud));              // darker lower fairing (keel)
+  const blend = mesh(new THREE.SphereGeometry(1, 28, 16), shroud, new THREE.Vector3(HX + 0.02, HY - 0.20, HZ - 0.01)); blend.scale.set(0.16, 0.07, 0.085); g.add(blend); // fairing into the post
+  // front: round cover plate high on the face, slightly outboard, with centre bolt
+  g.add(mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.014, 40), paint, new THREE.Vector3(HX + 0.425, HY + 0.06, HZ + 0.02), [0, 0, Math.PI / 2]));
+  g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 12), darkSteel, new THREE.Vector3(HX + 0.435, HY + 0.06, HZ + 0.02), [0, 0, Math.PI / 2]));
+  // rear: big rectangular light over most of the aft face, bezel, and data plate on the outboard side near the aft end
+  g.add(mesh(new RoundedBoxGeometry(0.02, 0.24, 0.27, 2, 0.008), darkSteel, new THREE.Vector3(HX - 0.415, HY + 0.02, HZ)));
+  g.add(mesh(new RoundedBoxGeometry(0.014, 0.21, 0.24, 2, 0.006), lens, new THREE.Vector3(HX - 0.424, HY + 0.02, HZ)));
+  g.add(mesh(new THREE.BoxGeometry(0.17, 0.075, 0.004), plate, new THREE.Vector3(HX - 0.27, HY + 0.10, HZ + W + 0.002)));
+  // ---- cable exits the underside at the outboard aft edge; bumper, swivel and hook hang directly under it
+  const cx = HX - 0.31, cz = HZ + 0.05, yb = HY - Hb;          // yb = head underside
+  g.add(mesh(new THREE.CylinderGeometry(0.0024, 0.0024, 0.03, 8), cableM, new THREE.Vector3(cx, yb - 0.01, cz)));
+  g.add(mesh(new THREE.CylinderGeometry(0.042, 0.05, 0.12, 24), rubber, new THREE.Vector3(cx, yb - 0.08, cz)));      // bumper
+  g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 20), steel, new THREE.Vector3(cx, yb - 0.15, cz)));
+  g.add(mesh(new THREE.CylinderGeometry(0.02, 0.026, 0.07, 16), steel, new THREE.Vector3(cx, yb - 0.195, cz)));      // swivel
+  g.add(mesh(new RoundedBoxGeometry(0.032, 0.07, 0.032, 2, 0.01), steel, new THREE.Vector3(cx, yb - 0.26, cz)));     // shank
   const hookG = new THREE.TorusGeometry(0.065, 0.016, 10, 28, Math.PI * 1.55); hookG.rotateZ(Math.PI * 0.72);
-  g.add(mesh(hookG, steel, new THREE.Vector3(cx, yb - 0.25, cz), [0, Math.PI / 2, 0]));
-  g.add(mesh(new THREE.BoxGeometry(0.006, 0.05, 0.03), darkSteel, new THREE.Vector3(cx, yb - 0.23, cz + 0.035), [0, 0, 0.5]));
-  // head + hook scaled 1.2x about the head centre (photo ratios: head ~0.40 m tall x 0.84 m long incl. end caps)
-  const hg = new THREE.Group(); hg.position.copy(C); hg.scale.setScalar(1.2);
-  for (const o of g.children.slice(n0)) { o.position.sub(C); hg.add(o); }
-  g.add(hg);
+  g.add(mesh(hookG, steel, new THREE.Vector3(cx, yb - 0.355, cz), [0, Math.PI / 2, 0]));                           // hook bottom ~0.43 m below head
+  g.add(mesh(new THREE.BoxGeometry(0.006, 0.06, 0.03), darkSteel, new THREE.Vector3(cx, yb - 0.33, cz + 0.04), [0, 0, 0.5])); // latch
   g.name = 'hoist'; g.userData.label = 'External rescue hoist (HH-60W pattern)';
   return g;
 }
