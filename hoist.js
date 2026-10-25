@@ -39,7 +39,7 @@ export function buildHoist(M) {
   const lens = new THREE.MeshPhysicalMaterial({ color: '#0b0f14', roughness: 0.04, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.02 });
 
   // ---- head (capsule, axis fore-aft). HA = centre station, HY = centre height, HZ = centre outboard.
-  const HA = 4.69, HX = P(HA, 0, 0).x, HY = 2.95, HZ = 1.62, L = 0.76, R = 0.162;
+  const HA = 4.69, HX = P(HA, 0, 0).x, HY = 3.06, HZ = 1.76, L = 0.76, R = 0.162;
   const prof = capsule(L, 0.11, 0.157, R), rAt = x => { let b = prof[0]; for (const q of prof) if (Math.abs(q[1] - x) < Math.abs(b[1] - x)) b = q; return b[0]; };
   const head = latheX(prof, paint, new THREE.Vector3(HX, HY, HZ), 1.0); g.add(head);
   // seam bands between the drum housing and the end housings
@@ -58,8 +58,8 @@ export function buildHoist(M) {
   // clear of the nacelle side, then turning vertical into the head underside slightly aft and inboard of the head centre.
   const AA = HA + 0.20, AX = P(AA, 0, 0).x;
   const root = new THREE.Vector3(AX, 2.19, 1.01), tip = new THREE.Vector3(AX, HY - R + 0.04, HZ - 0.05);
-  const arm = new THREE.CubicBezierCurve3(root, new THREE.Vector3(AX, 2.45, 1.30), new THREE.Vector3(AX, tip.y - 0.30, tip.z + 0.02), tip);
-  g.add(sweep(arm, 0.062, 0.047, paint, 2.2, 1.45));   // oval: ~0.27 x 0.12 m at the root (faired), ~0.14 x 0.09 m at the head
+  const arm = new THREE.CubicBezierCurve3(root, new THREE.Vector3(AX, 2.42, 1.40), new THREE.Vector3(AX, tip.y - 0.34, tip.z + 0.06), tip);
+  g.add(sweep(arm, 0.07, 0.054, paint, 2.2, 1.45));   // oval: ~0.27 x 0.12 m at the root (faired), ~0.14 x 0.09 m at the head
   // root fitting: tapered collar + bolted base plate on the skin
   g.add(sweep([new THREE.Vector3(AX, 2.14, 0.975), new THREE.Vector3(AX, 2.19, 1.01), new THREE.Vector3(AX, 2.24, 1.05)], 0.078, 0.066, paint, 2.0));
   g.add(mesh(new THREE.BoxGeometry(0.44, 0.02, 0.19), paint, new THREE.Vector3(AX, 2.14, 0.98), [-0.5, 0, 0]));
