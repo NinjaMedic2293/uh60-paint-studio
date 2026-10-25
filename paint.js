@@ -22,6 +22,7 @@ export const MAXP = 8, MAXR = 8;
 // MH-60T anti-glare: side break curve from belly (aBelly at y<=yLow) up to the windscreen rear upper corner (aTop,yTop);
 // above yRoof (within |z|<zRoof) the black covers the cabin roof back to the upper-cowling forward edge (aRoof).
 export const AG = [1.40, 0.80, 1.78, 2.25];
+export const AGC = { a0: 1.80, a1: 2.80, y: 2.405, z: 0.72 };
 export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
   const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uNac: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
@@ -89,10 +90,10 @@ ${NACD}
           if(mod(pc.a,2.0)>0.5) col=pc.rgb;
           if(pc.a>1.5) col=mix(col,vec3(0.05,0.75,1.0),0.45); }
         // layer 4: MH-60T anti-glare on top, always matte
-        if(uAG>0.5 && agf(vW)){ col=uC[${ZI('antiglare')}]; agM=1.0; }
+        if(uAG>0.5 && agf(vW)${kind === 0 ? ' && vNac<2.5' : ''}){ col=uC[${ZI('antiglare')}]; agM=1.0; }
       }
       // layer 5: engine nacelle flat black, selected by mesh faces (markNacelles): 1 = inlet lip torus, 2 = exhaust opening surfaces
-      if(uNac>0.5){ float nk=step(0.5,vNac);
+      if(uNac>0.5){ float nk=step(0.5,vNac)*step(vNac,2.5);
         if(nk>0.0){ col=uC[${ZI('nacelle')}]; pm=1.0; agM=1.0; lum=min(lum,1.0); } }` : ''}
       vec3 paint=col*clamp(mix(1.0,lum,0.85),0.45,1.45);
       if(uDbg>0.5 && z>=0) paint=dbgC(z)*clamp(lum,0.6,1.2);
@@ -121,7 +122,7 @@ export function markNacelles(mesh, matIndex, NX, img) {
   let d = null, W = 0, H = 0; if (img) { const c = document.createElement('canvas'); W = c.width = img.width; H = c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); d = x.getImageData(0, 0, W, H).data; }
   const paint = (u, v) => { if (!d) return true; const px = ((Math.floor(u * W) % W) + W) % W, py = ((Math.floor((1 - v) * H) % H) + H) % H, k = (py * W + px) * 4; return d[k + 1] - Math.max(d[k], d[k + 2]) * 1.02 > 0; };
   const M = mesh.matrixWorld, nm = new THREE.Matrix3().getNormalMatrix(M); const v = [0, 1, 2].map(() => new THREE.Vector3()), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), fn = new THREE.Vector3(), c = new THREE.Vector3();
-  let nl = 0, ne = 0;
+  let nl = 0, ne = 0, nc = 0;
   for (let t = gr.start; t < gr.start + gr.count; t += 3) {
     for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(P, t + k).applyMatrix4(M);
     c.copy(v[0]).add(v[1]).add(v[2]).divideScalar(3); fn.crossVectors(e1.subVectors(v[1], v[0]), e2.subVectors(v[2], v[0])).normalize();
@@ -132,8 +133,10 @@ export function markNacelles(mesh, matIndex, NX, img) {
     // outer side of the rim lip: the small outward-facing band of faces from the ring back to the lip/cowl seam (next ring is the long cowl faces)
     else if (a > NAC.o0 && a < NAC.o1 && r > NAC.r0 && r < NAC.or1 && L < NAC.oL && Math.abs(fn.dot(new THREE.Vector3(0, c.y - NAC.iy, (c.z - Math.sign(c.z) * NAC.iz)).normalize())) > 0.8) f = 1;
     else if (a > NAC.e0 && a < NAC.e1 && c.y > 2.12 && c.y < 3.02 && az > 0.6 && az < 1.7) { const uu = (U.getX(t) + U.getX(t + 1) + U.getX(t + 2)) / 3, vv = (U.getY(t) + U.getY(t + 1) + U.getY(t + 2)) / 3; if (!paint(uu, vv)) f = 2; }
-    if (f) { out[t] = out[t + 1] = out[t + 2] = f; f === 1 ? nl++ : ne++; }
+    // v9.2: sliding upper fairing / transmission cover (raised above the cockpit roof, aft of its nose tip) stays body colour: excluded from anti-glare
+    else if (a > AGC.a0 && a < AGC.a1 && c.y > AGC.y && az < AGC.z) f = 3;
+    if (f) { out[t] = out[t + 1] = out[t + 2] = f; f === 1 ? nl++ : f === 2 ? ne++ : nc++; }
   }
-  g.setAttribute('aNac', new THREE.BufferAttribute(out, 1)); return { lip: nl, exhaust: ne };
+  g.setAttribute('aNac', new THREE.BufferAttribute(out, 1)); return { lip: nl, exhaust: ne, cover: nc };
 }
 export const NAC = { iy: 2.68, iz: 0.965, a0: 4.28, a1: 4.40, r0: 0.16, r1: 0.37, fx: 0.25, L: 0.105, o0: 4.37, o1: 4.43, or1: 0.335, oL: 0.125, e0: 6.6, e1: 7.85 };
