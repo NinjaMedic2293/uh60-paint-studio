@@ -54,17 +54,18 @@ export function buildHoist(M) {
   { const ln = mesh(new THREE.BoxGeometry(0.34, 0.004, 0.004), seam, new THREE.Vector3(HX - 0.12, HY + R * 0.72, HZ + R * 0.70), [0.8, 0, 0]); ln.onBeforeRender = seamCol; g.add(ln); }
   for (const dx of [-0.26, -0.02]) for (const ang of [0.5, -0.4]) { const lt = mesh(new THREE.BoxGeometry(0.03, 0.01, 0.004), seam, new THREE.Vector3(HX + dx, HY + Math.sin(ang) * rAt(dx), HZ + Math.cos(ang) * rAt(dx)), [-ang, 0, 0]); lt.onBeforeRender = seamCol; g.add(lt); }
 
+  // doors v1: foot raised 0.10 m onto the upper door-track rail so the sliding door passes beneath it (doors.js)
   // ---- support arm: foot on the cabin roof edge at the door top rail (below/outboard of the inlet), leaning up and outboard
   // clear of the nacelle side, then turning vertical into the head underside slightly aft and inboard of the head centre.
   const AA = HA, AX = P(AA, 0, 0).x;
-  const root = new THREE.Vector3(AX, 2.19, 1.01), tip = new THREE.Vector3(AX, HY - R + 0.04, HZ - 0.05);
+  const root = new THREE.Vector3(AX, 2.29, 1.01), tip = new THREE.Vector3(AX, HY - R + 0.04, HZ - 0.05);
   const arm = new THREE.CubicBezierCurve3(root, new THREE.Vector3(AX, 2.40, 1.30), new THREE.Vector3(AX, tip.y - 0.26, tip.z + 0.04), tip);
   g.add(sweep(arm, 0.07, 0.054, paint, 2.2, 1.45));   // oval: ~0.27 x 0.12 m at the root (faired), ~0.14 x 0.09 m at the head
   // root fitting: tapered collar + bolted base plate on the skin
-  g.add(sweep([new THREE.Vector3(AX, 2.14, 0.975), new THREE.Vector3(AX, 2.19, 1.01), new THREE.Vector3(AX, 2.24, 1.05)], 0.078, 0.066, paint, 2.0));
-  g.add(mesh(new THREE.BoxGeometry(0.44, 0.02, 0.19), paint, new THREE.Vector3(AX, 2.14, 0.98), [-0.5, 0, 0]));
+  g.add(sweep([new THREE.Vector3(AX, 2.265, 0.975), new THREE.Vector3(AX, 2.29, 1.01), new THREE.Vector3(AX, 2.34, 1.05)], 0.078, 0.066, paint, 2.0));
+  g.add(mesh(new THREE.BoxGeometry(0.44, 0.02, 0.19), paint, new THREE.Vector3(AX, 2.24, 0.98), [-0.5, 0, 0]));
   for (const dx of [-0.085, 0.085]) for (const dz of [-0.045, 0.045]) { const o = new THREE.Vector3(dx, 0.013, dz).applyEuler(new THREE.Euler(-0.5, 0, 0));
-    g.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.01, 10), dark, new THREE.Vector3(AX, 2.14, 0.98).add(o), [-0.5, 0, 0])); }
+    g.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.01, 10), dark, new THREE.Vector3(AX, 2.24, 0.98).add(o), [-0.5, 0, 0])); }
   // saddle: small fairing where the arm enters the head
   const sad = mesh(new THREE.SphereGeometry(1, 32, 16), paint, new THREE.Vector3(AX, HY - R + 0.035, HZ - 0.05)); sad.scale.set(0.12, 0.06, 0.08); g.add(sad);
   // cable-guide: twin rollers + yoke either side of the fairlead (photo 33)

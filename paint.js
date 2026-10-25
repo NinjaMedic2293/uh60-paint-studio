@@ -97,8 +97,8 @@ const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos
 export function patchMaterial(m, kind, U, ref) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U); sh.uniforms.uRef = { value: ref };
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;' + (kind === 0 ? '\nattribute float aNac; varying float vNac;' : ''))
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;' + (kind === 0 ? ' vNac=aNac;' : ''));
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;' + (kind === 0 ? '\nattribute float aNac; varying float vNac; attribute vec3 aDoorOff;' : ''))
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed' + (kind === 0 ? '-aDoorOff' : '') + ',1.0)).xyz;' + (kind === 0 ? ' vNac=aNac;' : ''));
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
       varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; ${kind === 0 ? 'varying float vNac;' : ''} uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];

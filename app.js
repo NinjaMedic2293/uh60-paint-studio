@@ -13,6 +13,7 @@ import { buildDecals } from './decals.js';
 import { buildRotors, hideStockRotors } from './rotors.js';
 import { setupPaintTools } from './planes.js';
 import { setupStar } from './star-ui.js';
+import { setupDoors, DOOR_KEYS } from './doors.js';
 
 const q = new URLSearchParams(location.search);
 const SHOT = q.has('shot'); if (SHOT) document.body.classList.add('shot');
@@ -64,6 +65,8 @@ let decals = null; let decalKey = '';
 const NACSEL = markNacelles(mesh, GROUP.fuselage, BREAKS.NX, mats[GROUP.fuselage].map.image);
 KM.skin = mats[GROUP.fuselage]; const BYPASS = buildBypass(KM, mesh); scene.add(BYPASS);
 await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = createMarks(scene, FM);
+// opening cabin doors / crew chief windows (doors.js): panels cut out of the fuselage mesh, paint sampled closed
+const DOORS = setupDoors(mesh, { fm: FM }); scene.add(DOORS.fills); DOORS.addDecalRoot(MARKS.root); DOORS.addDecalRoot(() => decals);
 let PROBE = null, probeKey = '';
 let LET = null;
 const TOOLS = setupPaintTools({ U, scene, camera, renderer, controls, mesh, fusMatIndex: GROUP.fuselage, getS: () => S, onChange: () => { needs = true; }, requestDraw: () => { needs = true; } });
@@ -95,7 +98,8 @@ function apply(s, { rebuildDecals = true } = {}) {
   migrate(s); MARKS.sync(s.marks);
   const key = JSON.stringify([s.cross, s.colors.cross, s.star]);
   if (rebuildDecals && key !== decalKey) { if (decals) { scene.remove(decals); decals.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
-    decals = buildDecals(mesh, s); scene.add(decals); decalKey = key; }
+    decals = DOORS.withClosed(() => buildDecals(mesh, s)); scene.add(decals); decalKey = key; }
+  DOORS.set(s.doors || {}, !!s.doorsInstant); delete s.doorsInstant;
   needs = true;
 }
 // ---------- views
@@ -116,6 +120,7 @@ window.addEventListener('resize', resize); resize();
 controls.addEventListener('change', () => needs = true);
 function draw() {
   const w = canvas.width / renderer.getPixelRatio(), h = canvas.height / renderer.getPixelRatio();
+  DOORS.placeDecals();
   if (!cmp) { renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h); renderer.render(scene, camera); return; }
   renderer.setScissorTest(true);
   apply(cmp[0]); renderer.setScissor(0, 0, w / 2, h); renderer.setViewport(0, 0, w, h); renderer.render(scene, camera);
@@ -138,7 +143,7 @@ function drawLabels() {
     svg += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#d0212b"/><path d="M${p.x} ${p.y}V${ly}H${lx}" stroke="#d0212b" stroke-width="2" fill="none"/><text x="${lx + 2}" y="${ly - 6}" font-size="12" font-weight="700" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke" font-family="Arial, sans-serif">${name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`; });
   lab.innerHTML = svg + '</svg>';
 }
-function loop() { requestAnimationFrame(loop); controls.update(); if (needs || cmp) { needs = false; draw(); drawLabels(); } }
+function loop() { requestAnimationFrame(loop); controls.update(); if (DOORS.tick()) needs = true; if (needs || cmp) { needs = false; draw(); drawLabels(); } }
 
 // ---------- UI
 const $ = id => document.getElementById(id);
@@ -149,6 +154,7 @@ $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="col
 function syncUI() {
   TOOLS.sync(true);
   $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
+  DOOR_KEYS.forEach(([k]) => $('door_' + k).checked = !!(S.doors && S.doors[k]));
   $('finish').value = S.finish; migrate(S); LET?.render(); STAR.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
 }
@@ -156,6 +162,8 @@ $('preset').onchange = e => { S = clone(PRESETS[+e.target.value]); syncUI(); app
 $('nose').onchange = e => { S.nose = e.target.value; S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); };
 $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
 ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
+$('doorsRow').innerHTML = DOOR_KEYS.map(([k, l]) => `<label><input type="checkbox" id="door_${k}"> ${l}</label>`).join('');
+DOOR_KEYS.forEach(([k]) => $('door_' + k).onchange = e => { S.doors = { ...(S.doors || {}), [k]: e.target.checked }; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
 document.querySelectorAll('[data-z]').forEach(i => i.oninput = () => { S.colors[i.dataset.z] = i.value; apply(S); });
 $('labelsT').onchange = e => { showLabels = e.target.checked; needs = true; };
@@ -179,7 +187,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { ROTORS, NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { DOORS, ROTORS, NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';
