@@ -16,10 +16,10 @@ const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMappingExposure = 0.8; // deeper reds, closer to photos
 const scene = new THREE.Scene(); scene.background = new THREE.Color(q.get('bg') || '#c9d3dc');
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.9;
-const sun = new THREE.DirectionalLight('#fff6ea', 2.6); sun.position.set(9, 16, 7); sun.castShadow = true;
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.7;
+const sun = new THREE.DirectionalLight('#fff6ea', 2.2); sun.position.set(9, 16, 7); sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 60 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun, new THREE.HemisphereLight('#dfe8f0', '#6b6257', 0.35));
 const ground = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: '#8e8b84', roughness: 0.92 }));
@@ -71,7 +71,7 @@ function apply() {
   U.st.value.set(S.st.f, S.st.r, 0, S.st.on ? S.st.wIn * IN : 0); U.ac.value.set(S.ac.f, S.ac.r, S.ac.on ? 1 : 0, S.ac.boom ? 1 : 0);
   const matte = S.finish === 'matte'; body.roughness = matte ? 0.82 : 0.28; body.metalness = 0; body.envMapIntensity = matte ? 0.5 : 1.0;
   if (S.sk.on) { skidMat.color.set(S.sk.color); skidMat.metalness = 0.1; } else { skidMat.color.set('#2c2d2f'); skidMat.metalness = 0.3; }
-  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#141b20' : '#9fb6c4'); g.opacity = dk ? 0.86 : 0.42; g.envMapIntensity = dk ? 1.8 : 1.3; g.needsUpdate = true; }
+  { const g = P.glass.material, dk = S.glass !== 'clear'; g.color.set(dk ? '#0b0f12' : '#9fb6c4'); g.opacity = dk ? 0.70 : 0.42; g.envMapIntensity = dk ? 3.5 : 1.3; g.clearcoat = 1; g.clearcoatRoughness = 0.03; g.needsUpdate = true; }
   skidMat.roughness = matte ? 0.8 : 0.45; skidMat.needsUpdate = true;
   for (const t of TIPS) { t.tipOn.value = S.tp.on ? 1 : 0; t.tipC.value.set(S.tp.color); }
   MARKS.sync(S.marks); needs = true;

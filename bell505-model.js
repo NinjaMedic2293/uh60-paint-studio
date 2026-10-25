@@ -37,12 +37,12 @@ function plate(outline, thick, plane = 'xy', zc = 0) {
 
 // ---------- fuselage: side profile (yb, yt) from c12/c17/c25, plan half-width and section shape from front/rear views (c22, c20) and specs
 export const FUS = [
-  [-0.03, 0.80, 0.84, 0.015, 2.0, 0.50, 2.0], [0.00, 0.78, 0.92, 0.07, 1.9, 0.42, 1.8], [0.10, 0.72, 1.07, 0.15, 2.0, 0.40, 2.0], [0.25, 0.67, 1.30, 0.29, 2.4, 0.34, 2.4],
-  [0.45, 0.62, 1.57, 0.45, 2.6, 0.31, 3.0], [0.70, 0.57, 1.87, 0.61, 2.9, 0.29, 3.6], [1.00, 0.55, 2.15, 0.74, 3.3, 0.28, 4.2], [1.25, 0.53, 2.29, 0.81, 3.8, 0.27, 4.8],
-  [1.60, 0.53, 2.33, 0.83, 4.2, 0.27, 5.0], [2.40, 0.53, 2.35, 0.84, 4.2, 0.27, 5.0], [3.05, 0.55, 2.33, 0.83, 4.0, 0.28, 5.0], [3.55, 0.58, 2.25, 0.76, 3.6, 0.30, 4.0],
-  [4.30, 0.80, 2.12, 0.58, 3.0, 0.40, 3.0], [4.80, 1.06, 1.95, 0.40, 2.6, 0.50, 2.6], [5.30, 1.22, 1.77, 0.27, 2.2, 0.50, 2.2], [6.00, 1.32, 1.72, 0.22, 2.0, 0.50, 2.0],
+  [-0.06, 0.79, 0.85, 0.05, 2.0, 0.50, 2.0], [-0.02, 0.72, 0.95, 0.17, 2.0, 0.45, 2.0], [0.10, 0.67, 1.06, 0.27, 2.0, 0.42, 2.2], [0.25, 0.63, 1.26, 0.41, 2.1, 0.38, 2.6],
+  [0.45, 0.60, 1.55, 0.56, 2.1, 0.34, 3.0], [0.70, 0.56, 1.88, 0.68, 2.2, 0.31, 3.4], [1.00, 0.54, 2.16, 0.79, 2.3, 0.29, 3.8], [1.30, 0.53, 2.33, 0.83, 2.5, 0.28, 4.0],
+  [1.70, 0.53, 2.40, 0.84, 2.9, 0.28, 4.2], [2.30, 0.53, 2.39, 0.84, 2.9, 0.28, 4.2], [2.85, 0.56, 2.33, 0.81, 2.8, 0.30, 4.0], [3.30, 0.64, 2.25, 0.73, 2.7, 0.33, 3.4],
+  [3.90, 0.84, 2.14, 0.57, 2.6, 0.42, 2.8], [4.50, 1.08, 1.97, 0.40, 2.4, 0.50, 2.4], [5.10, 1.24, 1.79, 0.27, 2.2, 0.50, 2.2], [6.00, 1.32, 1.72, 0.22, 2.0, 0.50, 2.0],
   [8.00, 1.38, 1.68, 0.16, 2.0, 0.50, 2.0], [9.60, 1.41, 1.63, 0.11, 2.0, 0.50, 2.0], [9.95, 1.43, 1.61, 0.09, 2.0, 0.50, 2.0], [9.97, 1.50, 1.54, 0.01, 2.0, 0.50, 2.0]];
-export const COWL = [[1.75, 2.10, 2.27, 0.05, 3.0], [1.95, 2.10, 2.41, 0.50, 3.0], [2.50, 2.10, 2.50, 0.60, 3.4], [3.60, 2.10, 2.53, 0.60, 3.4],
+export const COWL = [[1.75, 2.10, 2.27, 0.05, 3.0], [1.95, 2.10, 2.47, 0.50, 3.0], [2.50, 2.10, 2.60, 0.60, 3.0], [3.60, 2.10, 2.62, 0.60, 3.0],
   [4.20, 2.00, 2.36, 0.50, 3.2], [4.70, 1.90, 2.12, 0.36, 2.8], [5.00, 1.80, 1.98, 0.20, 2.4], [5.12, 1.76, 1.84, 0.03, 2.0]];
 const fusAt = sampler(FUS);
 // surface point and outward normal at (a, th), offset along the normal
@@ -59,10 +59,12 @@ function patch(a0, a1, thLo, thHi, nu = 40, nv = 24, off = 0.008) { const pos = 
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
 const rr = (a, a0, a1, r) => { const d = Math.min(a - a0, a1 - a); return d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) ** 2)); };
 export const WIN = {
-  ws: { a0: 0.22, a1: 1.58, low: a => a < 1.1 ? 0.83 + 0.15 * a : 0.995 }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
-  door: { a0: 1.74, a1: 2.50, yb: 1.00, yt: 2.20, r: 0.10 }, rear: { a0: 2.62, a1: 3.02, yb: 1.08, yt: 2.18, r: 0.08 } };
+  ws: { a0: 0.36, a1: 1.50, low: a => a < 0.8 ? 0.93 - 0.40 * (a - 0.36) : Math.min(0.80, 0.754 + 0.1 * (a - 0.8)) }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
+  door: { a0: 1.80, a1: 2.42, yb: 0.90, yt: 2.22, r: 0.14 }, rear: { a0: 2.52, a1: 2.92, yb: 1.00, yt: 2.18, r: 0.12 } };
 const wsLo = a => Math.min(WIN.ws.low(a) + rr(a, WIN.ws.a0 - 0.25, WIN.ws.a1, 0.14), fusAt(a)[1] - 0.03);
-const inWin = (a, y, z) => { const W = WIN.ws; if (a > W.a0 && a < W.a1 && y > wsLo(a)) return true;
+// red roof aft of the windscreen header: from WS_TOP aft the glass only covers the sides, up to wsHi(a)
+const WS_TOP = 1.22, wsHi = a => a < WS_TOP ? 9 : fusAt(a)[1] - 0.12 - 0.5 * (a - WS_TOP);
+const inWin = (a, y, z) => { const W = WIN.ws; if (a > W.a0 && a < W.a1 && y > wsLo(a) && y < wsHi(a)) return true;
   if (Math.abs(z) < 0.3) return false; for (const w of [WIN.door, WIN.rear]) if (a > w.a0 && a < w.a1 && y > w.yb + rr(a, w.a0, w.a1, w.r) && y < w.yt - rr(a, w.a0, w.a1, w.r)) return true; return false; };
 // drop body faces behind the glass so the cabin can be seen through it
 function cutWin(g) { g = g.toNonIndexed(); const p = g.attributes.position.array, n = g.attributes.normal.array, P = [], N = [];
@@ -70,17 +72,20 @@ function cutWin(g) { g = g.toNonIndexed(); const p = g.attributes.position.array
     if (inWin(a, y, z)) continue; for (let m = 0; m < 9; m++) { P.push(p[k + m]); N.push(n[k + m]); } }
   const r = new THREE.BufferGeometry(); r.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); r.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); return r; }
 // window frame line along a set of surface points
-function frames() { const T = [], W = WIN.ws, f = (a, th) => { const q = surfPt(a, th, 0.01); return [NX - q[0], q[1], q[2]]; };
-  for (const s of [1, -1]) { const pts = []; for (let a = W.a0 - 0.02; a <= W.a1; a += 0.03) pts.push(f(a, thOfY(a, wsLo(a), s))); T.push(tube(pts, 0.026, 8));
+function frames() { const T = [], W = WIN.ws, f = (a, th) => { const q = surfPt(a, th, 0.004); return [NX - q[0], q[1], q[2]]; };
+  for (const s of [1, -1]) { const pts = []; for (let a = W.a0 - 0.02; a <= W.a1; a += 0.03) pts.push(f(a, thOfY(a, wsLo(a), s))); T.push(tube(pts, 0.009, 6));
+    { const q = []; for (let a = WS_TOP; a <= W.a1; a += 0.02) q.push(f(a, thOfY(a, wsHi(a), s))); T.push(tube(q, 0.009, 6)); }
     for (const w of [WIN.door, WIN.rear]) { const pts = [], e = 0.012; const lo = a => w.yb + rr(a, w.a0, w.a1, w.r), hi = a => w.yt - rr(a, w.a0, w.a1, w.r);
       for (let a = w.a0 + e; a <= w.a1 - e; a += 0.03) pts.push(f(a, thOfY(a, lo(a), s))); for (let y = lo(w.a1 - e); y <= hi(w.a1 - e); y += 0.05) pts.push(f(w.a1 - e, thOfY(w.a1 - e, y, s)));
       for (let a = w.a1 - e; a >= w.a0 + e; a -= 0.03) pts.push(f(a, thOfY(a, hi(a), s))); for (let y = hi(w.a0 + e); y >= lo(w.a0 + e); y -= 0.05) pts.push(f(w.a0 + e, thOfY(w.a0 + e, y, s)));
-      pts.push(pts[0]); T.push(tube(pts, 0.026, 8)); } }
-  { const pts = []; for (let th = thOfY(W.a0, wsLo(W.a0), 1); th <= thOfY(W.a0, wsLo(W.a0), -1); th += 0.04) pts.push(f(W.a0 + 0.005, th)); T.push(tube(pts, 0.026, 8)); }
-  { const pts = []; for (let th = thOfY(W.a1, wsLo(W.a1), 1); th <= thOfY(W.a1, wsLo(W.a1), -1); th += 0.05) pts.push(f(W.a1 - 0.005, th)); T.push(tube(pts, 0.026, 8)); }
+      pts.push(pts[0]); T.push(tube(pts, 0.009, 6)); } }
+  { const pts = []; for (let th = thOfY(W.a0, wsLo(W.a0), 1); th <= thOfY(W.a0, wsLo(W.a0), -1); th += 0.04) pts.push(f(W.a0 + 0.005, th)); T.push(tube(pts, 0.009, 6)); }
+  { const pts = []; for (let th = thOfY(WS_TOP, wsHi(WS_TOP + 1e-3), 1); th <= thOfY(WS_TOP, wsHi(WS_TOP + 1e-3), -1); th += 0.04) pts.push(f(WS_TOP, th)); T.push(tube(pts, 0.009, 6));
+    for (const s of [1, -1]) { const q = []; for (let y = wsLo(W.a1 - 0.005); y <= wsHi(W.a1 - 0.005); y += 0.04) q.push(f(W.a1 - 0.005, thOfY(W.a1 - 0.005, y, s))); T.push(tube(q, 0.009, 6)); } }
   return T; }
 function glassGeo() { const G = []; const W = WIN.ws, lo = wsLo;
-  G.push(patch(W.a0, W.a1, a => thOfY(a, lo(a), 1), a => thOfY(a, lo(a), -1), 70, 64));
+  G.push(patch(W.a0, WS_TOP, a => thOfY(a, lo(a), 1), a => thOfY(a, lo(a), -1), 60, 64));
+  G.push(patch(WS_TOP, W.a1, a => thOfY(a, lo(a), 1), a => thOfY(a, wsHi(a), 1), 20, 24), patch(WS_TOP, W.a1, a => thOfY(a, wsHi(a), -1), a => thOfY(a, lo(a), -1), 20, 24));
   for (const s of [1, -1]) for (const w of [WIN.door, WIN.rear]) {
     const l = a => thOfY(a, w.yb + rr(a, w.a0, w.a1, w.r), s), h = a => thOfY(a, w.yt - rr(a, w.a0, w.a1, w.r), s);
     G.push(s > 0 ? patch(w.a0, w.a1, l, h) : patch(w.a0, w.a1, h, l)); }
@@ -95,30 +100,30 @@ function blade(r0, r1, c0, c1, tipFrom, t, sweep = 0) { const pos = [], idx = []
 
 export function buildBell505() {
   const root = new THREE.Group(); root.name = 'bell505';
-  const fus = cutWin(loft(FUS, -0.03, 9.97, 420, 176)), cowl = loft(COWL, 1.75, 5.12, 50, 48);
+  const fus = cutWin(loft(FUS, -0.06, 9.97, 420, 176)), cowl = loft(COWL, 1.75, 5.12, 50, 48);
   const fin = plate([[9.25, 1.48], [9.72, 2.24], [9.94, 2.26], [9.92, 1.42]], 0.07);
   const ventral = plate([[9.22, 1.30], [9.60, 0.64], [9.84, 0.64], [9.80, 1.28]], 0.06);
-  const stab = plate([[7.0, -1.0], [7.55, -1.0], [7.55, 1.0], [7.0, 1.0]], 0.05, 'xz', 1.24);
-  const ends = [-1, 1].map(s => plate([[7.03, 1.08], [7.17, 1.46], [7.45, 1.48], [7.52, 1.04]], 0.04, 'xy', s * 1.03));
+  const stab = plate([[7.05, -0.90], [7.50, -0.90], [7.50, 0.90], [7.05, 0.90]], 0.05, 'xz', 1.30);
+  const ends = [-1, 1].map(s => plate([[7.08, 1.16], [7.20, 1.48], [7.42, 1.50], [7.48, 1.12]], 0.04, 'xy', s * 0.93));
   const bodyG = merge([fus, cowl, fin, ventral, stab, ...ends, at(new THREE.CylinderGeometry(0.12, 0.20, 0.20, 24), DIM.mrA, 2.58, 0)]);
   const meshes = {}, M = (name, geo, mat) => { const m = new THREE.Mesh(geo, mat); m.name = name; meshes[name] = m; root.add(m); return m; };
   const dark = new THREE.MeshStandardMaterial({ color: '#1d1f22', roughness: 0.55, metalness: 0.2 });
   const metal = new THREE.MeshStandardMaterial({ color: '#8d9094', roughness: 0.35, metalness: 0.8 });
   M('body', bodyG, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.3 }));
-  const glass = M('glass', glassGeo(), new THREE.MeshPhysicalMaterial({ color: '#9fb6c4', roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.42, envMapIntensity: 1.3, depthWrite: false }));
+  const glass = M('glass', glassGeo(), new THREE.MeshPhysicalMaterial({ color: '#9fb6c4', roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0.03, metalness: 0.0, transparent: true, opacity: 0.42, envMapIntensity: 1.3, depthWrite: false }));
   glass.renderOrder = 2;
   // cabin interior so the light glass reads: floor, panel + glareshield, two crew seats, rear bench
-  const inner = [at(new THREE.BoxGeometry(2.1, 0.04, 1.40), 2.30, 0.66, 0), at(new THREE.BoxGeometry(0.16, 0.24, 0.90), 1.22, 1.08, 0), at(new THREE.BoxGeometry(0.22, 0.04, 0.95), 1.20, 1.21, 0)];
+  const inner = [at(new THREE.BoxGeometry(1.9, 0.04, 1.36), 2.15, 0.68, 0), at(new THREE.BoxGeometry(0.16, 0.24, 0.90), 1.22, 1.08, 0), at(new THREE.BoxGeometry(0.22, 0.04, 0.95), 1.20, 1.21, 0)];
   for (const z of [-0.36, 0.36]) inner.push(at(new THREE.BoxGeometry(0.50, 0.12, 0.48), 1.95, 0.98, z), at(new THREE.BoxGeometry(0.10, 0.70, 0.46), 2.22, 1.36, z));
-  inner.push(at(new THREE.BoxGeometry(0.50, 0.12, 1.40), 2.90, 0.98, 0), at(new THREE.BoxGeometry(0.10, 0.75, 1.40), 3.18, 1.38, 0));
+  inner.push(at(new THREE.BoxGeometry(0.50, 0.12, 1.30), 2.72, 0.98, 0), at(new THREE.BoxGeometry(0.10, 0.75, 1.30), 2.98, 1.38, 0));
   M('interior', merge(inner), new THREE.MeshStandardMaterial({ color: '#8f8068', roughness: 0.85 }));
   // trim: windscreen centre post, door seams, hinges + handles, intake grilles, angled exhaust outlet
   const trim = frames();
   { const pts = []; for (let a = WIN.ws.a0 + 0.04; a <= WIN.ws.a1 - 0.02; a += 0.05) { const p = surfPt(a, Math.PI / 2, 0.012); pts.push([NX - p[0], p[1], 0]); } trim.push(tube(pts, 0.018, 6)); }
   for (const s of [-1, 1]) {
-    for (const [a, y0, y1] of [[1.68, 0.56, 2.20], [2.56, 0.54, 2.25], [3.38, 0.56, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
-    for (const [a, y] of [[1.72, 1.25], [1.72, 1.95], [2.60, 1.25], [2.60, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
-    for (const a of [2.40, 3.28]) trim.push(at(new THREE.BoxGeometry(0.17, 0.035, 0.03), a, 1.05, zAt(a, 1.05, s) + s * 0.016)); // handles
+    for (const [a, y0, y1] of [[1.73, 0.56, 2.30], [2.47, 0.56, 2.32], [3.18, 0.62, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
+    for (const [a, y] of [[1.77, 1.25], [1.77, 1.95], [2.51, 1.25], [2.51, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
+    for (const a of [2.36, 3.10]) trim.push(at(new THREE.BoxGeometry(0.17, 0.035, 0.03), a, 0.80, zAt(a, 0.80, s) + s * 0.016)); // handles
     trim.push(at(new THREE.BoxGeometry(0.55, 0.22, 0.03), 3.70, 2.30, s * 0.585));
     for (let k = 0; k < 5; k++) trim.push(at(new THREE.BoxGeometry(0.53, 0.012, 0.045), 3.70, 2.22 + k * 0.042, s * 0.595)); }
   { const d = new THREE.Vector3(-0.55, 0.55, 0.62).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
