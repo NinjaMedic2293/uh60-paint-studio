@@ -246,3 +246,34 @@ export function buildTanks(M) {
   }
   return g;
 }
+// v9: engine inlet particle-separator bypass/scavenge fairing, outboard side of each nacelle just aft of the inlet lip
+// sized from 6003/6008/6029 photos against the lip (lip OD ~0.64 m): ~0.40 m long, wraps ~115 deg of the nacelle, ~4 cm proud of the cowl
+export const BYP = { a0: 4.425, len: 0.40, r0: 0.285, r1: 0.335, ph0: -58, ph1: 58 };
+export function buildBypass(M) {
+  const g = new THREE.Group(); g.name = 'bypass'; g.userData.label = 'Engine inlet bypass fairings';
+  const D = Math.PI / 180, { a0, len, r0, r1 } = BYP;
+  // closed side profile (r, h): flat front against the lip, raised top, rounded aft roll-off down to the cowl
+  const pr = [[r0, 0], [r1 - 0.006, 0], [r1, 0.012], [r1, len - 0.12]];
+  for (let i = 1; i <= 8; i++) { const t = i / 8 * Math.PI / 2; pr.push([r0 + (r1 - r0) * Math.cos(t), len - 0.12 + 0.12 * Math.sin(t)]); }
+  const pts = pr.map(([r, h]) => new THREE.Vector2(r, h));
+  const shape = new THREE.Shape(pts);
+  const ph = (BYP.ph1 - BYP.ph0) * D, ps = BYP.ph0 * D;
+  const sec = (r, h, phi) => new THREE.Vector3(r * Math.sin(phi), h, r * Math.cos(phi));
+  for (const s of [1, -1]) {
+    const n = new THREE.Group(); n.position.copy(P(a0, 2.68, s * 0.965)); n.rotation.z = Math.PI / 2; if (s < 0) n.scale.z = -1;
+    // housing body + end caps
+    n.add(mesh(new THREE.LatheGeometry(pts, 28, ps, ph), M.bypass));
+    for (const phi of [ps, ps + ph]) { const c = mesh(new THREE.ShapeGeometry(shape), M.bypass); c.rotation.y = phi - Math.PI / 2; n.add(c); }
+    // openings: dark recessed rectangles on the outer face (upper scavenge opening, lower duct)
+    const hole = (phc, dphi, h0, h1) => { const gg = new THREE.LatheGeometry([new THREE.Vector2(r1 + 0.002, h0), new THREE.Vector2(r1 + 0.002, h1)], 10, (phc - dphi / 2) * D, dphi * D); n.add(mesh(gg, M.bypassDark));
+      // frame lip around the opening
+      for (const p of [phc - dphi / 2 - 2, phc + dphi / 2 + 2]) n.add(mesh(new THREE.BoxGeometry(0.012, h1 - h0 + 0.02, 0.014), M.bypass, sec(r1 + 0.004, (h0 + h1) / 2, p * D), [0, p * D, 0]));
+      for (const h of [h0 - 0.008, h1 + 0.008]) n.add(mesh(new THREE.LatheGeometry([new THREE.Vector2(r1 + 0.009, h - 0.006), new THREE.Vector2(r1 + 0.009, h + 0.006)], 10, (phc - dphi / 2 - 3) * D, (dphi + 6) * D), M.bypass)); };
+    hole(30, 30, 0.07, 0.20); hole(-32, 28, 0.08, 0.22);
+    // flat bolted strut/plate in the middle with fasteners
+    n.add(mesh(new THREE.BoxGeometry(0.11, 0.24, 0.016), M.bypass, sec(r1 + 0.008, 0.15, 0), [0, 0, 0]));
+    for (const [dp, h] of [[-0.035, 0.06], [0.035, 0.06], [-0.035, 0.24], [0.035, 0.24], [0, 0.15]]) n.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.006, 8), M.bypassBolt, new THREE.Vector3(dp, h, r1 + 0.018), [Math.PI / 2, 0, 0]));
+    g.add(n);
+  }
+  return g;
+}
