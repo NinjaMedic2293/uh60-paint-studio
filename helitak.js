@@ -13,6 +13,7 @@ const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e
 // v2 (photo-measured, main wheel 0.66 m as ruler): N8286 side drop (APF) skirt 1.46 m deep, bottom ~1.6 m below wheel bottoms,
 // front face ~31 deg / aft face ~32 deg from vertical, sides near-vertical, front of tank ~ main axle; VH-URS (brochure) depth ~1.3 m,
 // bottom ~1.2 m below wheels, snorkel ~3.7 m incl. a long slim pump head, pivot just aft of the left main wheel at shell height.
+// v6: frame shortened to 2.7 m (a 3.55-6.25) so it ends at the bag top aft edge (photos show no aft overhang).
 // v5 (photos are the authority, volume not a constraint): silhouette measured on the APF N8286 drop (wheel 23 px = 0.66 m,
 // 0.029 m/px) + VH-URS: tapered bag, top ~2.5 m fore-aft starting at the main axle, bottom ~1.4 m, ~1.3 m deep, aft face steeper
 // (26 deg) than front (19 deg), sides taper inward 10 deg (1.7 -> 1.24 m). Volume ~3.7 m3 bag + ~1.7 m3 shell = ~5.4 m3 (> 4.5 m3 rated).
@@ -20,7 +21,7 @@ const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e
 // -> bag ~3.01 m3 + shell ~1.71 m3 = ~4.72 m3 (4500 L + 5%); total depth ~1.01 m = ~1.5x the 0.66 m main wheel (N8286/VH-URS).
 // (v3 note, superseded:) capacity is the hard constraint. Shell (3.4 x 2.0 x 0.26, ~1.71 m3) + skirt (0.50 m deep, narrower top that flares
 // 4 deg outward, 15/10 deg front/aft faces, flat bottom) = ~4.75 m3 = 4500 L + ~5% margin; bottom ~0.2 m below wheel bottoms.
-export const HT = { a0: 3.55, a1: 6.95, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 1.30, fSlope: 19, aSlope: 26, sSlope: 10, inset: 0.07, bagL: 2.5, bagW: 1.7, bagFwd: 0.15,
+export const HT = { a0: 3.55, a1: 6.25, w: 2.0, top: 0.565, shell: 0.26, band: 0.04, depth: 1.30, fSlope: 19, aSlope: 26, sSlope: 10, inset: 0.07, bagL: 2.5, bagW: 1.7, bagFwd: 0.15,
   piv: [3.95, 0.50, -1.19], tube: 3.2, head: 0.55, hang: 0.17, stow: 1.505 };
 function mesh(g, m, pos, rot) { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; if (pos) o.position.copy(pos); if (rot) o.rotation.set(...rot); return o; }
 // rounded-rectangle outline (half sizes hx along x, hz along z, corner radius r), n points per corner
@@ -43,7 +44,7 @@ export function buildHelitak() {
   g.add(mesh(new RoundedBoxGeometry(L, HT.shell, HT.w, 4, 0.07), M.shell, new THREE.Vector3(X, HT.top - HT.shell / 2, 0)));
   // dark mounting rail on top (gap to the belly) and ESSS/hook fittings
   g.add(mesh(new THREE.BoxGeometry(L - 0.3, 0.02, HT.w - 0.3), M.dark, new THREE.Vector3(X, HT.top + 0.008, 0)));
-  for (const a of [3.85, 5.25, 6.6]) for (const s of [1, -1]) g.add(mesh(new THREE.BoxGeometry(0.16, 0.05, 0.06), M.dark, P(a, HT.top - 0.03, s * (HT.w / 2 + 0.02))));
+  for (const a of [3.8, 4.9, 6.0]) for (const s of [1, -1]) g.add(mesh(new THREE.BoxGeometry(0.16, 0.05, 0.06), M.dark, P(a, HT.top - 0.03, s * (HT.w / 2 + 0.02))));
   // expanding skirt: rings of rounded rectangles from the shell bottom down to the bottom doors
   const NR = 6, NP = rrect(1, 1, 0.1).length;
   const sg = new THREE.BufferGeometry(); const pos = new Float32Array(NR * NP * 3); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
