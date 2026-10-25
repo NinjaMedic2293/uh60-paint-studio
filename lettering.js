@@ -52,18 +52,20 @@ function drawText(it) {
     if (it.faa && ch !== ' ') { w = ch === '1' ? capIn / 6 : (ch === 'M' || ch === 'W') ? capIn : capIn * 2 / 3; adv = w + capIn * 2 / 3 / 4; } // 45.29(c),(e)
     glyphs.push({ ch, nat: Math.max(nat, 0.001), w, x }); x += adv;
   }
-  if (it.faa && glyphs.length) x -= capIn * 2 / 3 / 4;
+  // FAA: 45.29(e) gap (1/4 of the 2/3-h character width) measured between INK edges, so every visible gap is equal incl. the '1' and its flag
+  const oth = glyphs.filter(q => q.ch !== ' ' && q.ch !== '1').map(q => q.w / q.nat).sort((a, b) => a - b);
+  const oneSx = oth.length ? oth[oth.length >> 1] : (capIn * 2 / 3) / (tmp.measureText('0').width / capPx * capIn); // '1' keeps the others' stroke scale (45.29(d))
+  if (it.faa) { const gap = capIn * 2 / 3 / 4; x = 0;
+    glyphs.forEach((q, i) => { if (q.ch === ' ') { x += capIn * 2 / 3 + gap; return; }
+      q.sx = q.ch === '1' ? oneSx : q.w / q.nat; const m = tmp.measureText(q.ch), u = capIn / capPx * q.sx;
+      const L = -m.actualBoundingBoxLeft * u, R = m.actualBoundingBoxRight * u; q.x = x - L; x += (R - L) + gap; });
+    if (glyphs.length) x -= gap; }
   const wIn = x + pad * 2, hIn = capIn + pad * 2;
   const { c, g, k } = canvasFor(wIn, hIn);
   g.font = `${wt} ${fpi * capIn * k}px "${fam}"`; g.textBaseline = 'alphabetic';
   const base = (pad + capIn) * k;
-  const oth = glyphs.filter(q => q.ch !== ' ' && q.ch !== '1').map(q => q.w / q.nat).sort((a, b) => a - b);
-  const one = { sx: it.faa ? (oth.length ? oth[oth.length >> 1] : (capIn * 2 / 3) / (tmp.measureText('0').width / capPx * capIn)) : 1 };
   const pass = stroke => glyphs.forEach(q => { if (q.ch === ' ') return; g.save(); g.translate((pad + q.x) * k, base);
-    let sx = it.faa ? q.w / q.nat : (it.sx || 1);
-    if (it.faa && q.ch === '1') { // 45.29(c)/(d): '1' is a bar h/6 wide = the stroke width; never squash it, use the other glyphs' scale and centre its ink in the slot
-      sx = one.sx; const m = g.measureText('1'); g.translate((q.w * k - (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) * sx) / 2 + m.actualBoundingBoxLeft * sx, 0); }
-    g.scale(sx, 1);
+    g.scale(it.faa ? q.sx : (it.sx || 1), 1);
     if (stroke) g.strokeText(q.ch, 0, 0); else g.fillText(q.ch, 0, 0); g.restore(); });
   if (it.outlineIn > 0) { g.strokeStyle = it.outline || '#fff'; g.lineJoin = 'round'; g.lineWidth = it.outlineIn * 2 * k; pass(true); }
   g.fillStyle = it.color; pass(false);
