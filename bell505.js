@@ -1,10 +1,10 @@
-// Bell 505 Jet Ranger X paint studio. Geometry is original procedural work (bell505-model.js).
+// Bell 505 Jet Ranger X paint studio. Geometry: original subdivision-surface model built in Blender from the Bell spec-book three-view (model/bell505.glb).
 // World frame matches the UH-60 page: nose tip at x = 6.243, +y up, +z right side, ground y = 0.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { loadFonts, createMarks, newText, IN } from './lettering.js';
 import { setupLettering } from './lettering-ui.js';
-import { buildBell505, DIM } from './bell505-model.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const NX = 6.243, $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
 const KEY = 'bell505-schemes', CUR = 'bell505-current';
@@ -57,10 +57,15 @@ const controls = new OrbitControls(camera, canvas); controls.enableDamping = tru
 controls.minDistance = 2; controls.maxDistance = 60; controls.maxPolarAngle = Math.PI * 0.995;
 
 // ---------- model
-const B = buildBell505(), P = B.P; for (const o of Object.values(P)) o.castShadow = o.receiveShadow = o.name !== 'glass';
-scene.add(B.root);
+const gltf = await new GLTFLoader().loadAsync('model/bell505.glb');
+const P = {}; gltf.scene.traverse(o => { if (o.isMesh) { P[o.name] = o; o.castShadow = o.receiveShadow = o.name !== 'glass';
+  const m = o.material; if (o.name === 'body' || o.name === 'glass') { const pm = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(pm, m); o.material = pm; } } });
+P.glass.material.transparent = true; P.glass.material.depthWrite = false; P.glass.renderOrder = 2;
+scene.add(gltf.scene);
 const ctr = n => { const b = new THREE.Box3().setFromObject(P[n]); return b.getCenter(new THREE.Vector3()); };
-const MR = new THREE.Vector3(NX - DIM.mrA, DIM.mrY, 0), TR = new THREE.Vector3(NX - DIM.trA, DIM.trY, 0);
+const MR = ctr('mrhub'), TR = ctr('trhub'); // rotor is modelled with the 3.5 deg forward mast tilt
+const TILT = 3.5 * Math.PI / 180, MAXIS = new THREE.Vector3(Math.sin(TILT), Math.cos(TILT), 0);
+const DIM = { mrR: new THREE.Box3().setFromObject(P.mrblade).getSize(new THREE.Vector3()).toArray().sort((a,b)=>b-a)[0] / 2, trR: new THREE.Box3().setFromObject(P.trblade).getSize(new THREE.Vector3()).y / 2 };
 const U = { base: { value: new THREE.Color() }, stC: { value: new THREE.Color() }, st: { value: new THREE.Vector4() }, acC: { value: new THREE.Color() }, ac: { value: new THREE.Vector4() } };
 // body: greyscale detail map (livery removed offline) x zone colour picked from world position
 const body = P.body.material; body.color.set('#ffffff');
@@ -92,7 +97,7 @@ const skidMat = P.skids.material;
 
 // ---------- schemes
 const PRESETS = {
-  'Plain bright red': { base: '#c40c02', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
+  'Plain bright red': { base: '#D10000', finish: 'gloss', st: { on: false, color: '#ffffff', wIn: 6, f: 1.25, r: 1.70 }, ac: { on: false, color: '#ffffff', f: 0.95, r: 1.55, boom: false } },
 };
 const DEF = () => ({ aircraft: 'bell505', name: '', ...JSON.parse(JSON.stringify(PRESETS['Plain bright red'])), glass: 'dark', sk: { on: false, color: '#2b2b2b' }, tp: { on: false, color: '#ffffff' }, marks: [] });
 let S = (() => { try { const s = JSON.parse(localStorage.getItem(CUR)); if (s && s.aircraft === 'bell505') return { ...DEF(), ...s }; } catch {} return DEF(); })();
@@ -156,7 +161,7 @@ function spinAbout(objs, c, axis, ang) { const m = new THREE.Matrix4().makeTrans
 function draw() { renderer.render(scene, camera); }
 let last = performance.now();
 renderer.setAnimationLoop(t => { const dt = Math.min(0.05, (t - last) / 1000); last = t;
-  if (spin) { spinAbout(mrot, MR, new THREE.Vector3(0, 1, 0), dt * 40); spinAbout(trot, TR, new THREE.Vector3(0, 0, 1), dt * 230); needs = true; }
+  if (spin) { spinAbout(mrot, MR, MAXIS, dt * 40); spinAbout(trot, TR, new THREE.Vector3(0, 0, 1), dt * 230); needs = true; }
   if (controls.update() || needs) { needs = false; draw(); } });
 syncUI(); apply();
 const cam = (q.get('cam') || '').split(',').map(Number);
