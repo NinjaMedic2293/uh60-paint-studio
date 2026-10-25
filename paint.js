@@ -25,6 +25,16 @@ export const AG = [1.40, 0.80, 1.78, 2.25];
 export const AGC = { a0: 1.80, a1: 2.80, y: 2.405, z: 0.72 };
 // v9.3: the single large upper access door (sliding cover) is panel 100 in model/panels.png; it stays body colour to its edge
 export const AG_DOOR_PID = 100;
+// v10.1: MH-60T break follows the real seams (6003/6008/6029/6019): the whole nose skin panel on each side (76 L / 43 R)
+// is black and ends at the cockpit-door forward frame seam (a~1.19, vertical from the chin up to the sill, then raked aft up the windscreen post);
+// nose tip / chin panels are black; under the chin the break is a straight transverse line at that same station.
+// The cockpit doors (73 / 40) and the upper access door (100) stay body colour; the cockpit roof keeps the agf roof rule.
+export const AG_NOSE_PIDS = [76, 43, 45, 77, 70, 38, 5, 24, 13];
+export const AG_BELLY_PIDS = [3, 9, 17, 23, 27, 34, 66];
+export const AG_BREAK_A = 1.19; // cockpit-door forward frame seam (MH-60T 6003/6008)
+export const AG_POST_K = 0.56, AG_POST_Y = 1.45; // break rakes aft up the windscreen post
+const pidList = (L) => L.map(i => `abs(id-${i}.0)<0.5`).join(' || ');
+
 export const AGQ = [2.40, 2.28, 0.95, 0];
 export function zoneUniforms() {
   const u = { uC: { value: ZKEYS.map(() => new THREE.Color()) }, uAG: { value: 0 }, uNac: { value: 0 }, uST: { value: 0 }, uDbg: { value: 0 },
@@ -60,6 +70,12 @@ function zoneGLSL(kind) {
 }
 const NACD = `#define NAC_IY 2.68\n#define NAC_IZ 0.965\n#define NAC_IR 0.315\n#define NAC_IA0 4.22\n#define NAC_IA1 5.0\n#define NAC_IL 4.56\n#define NAC_DR 0.255\n#define NAC_EA 6.98\n`;
 const AGF = `bool agf(vec3 w){ float a=${glsl(B.NX)}-w.x; float t=clamp((w.y-uAGp.y)/(uAGp.w-uAGp.y),0.0,1.0); float lim=uAGp.x+(uAGp.z-uAGp.x)*sqrt(t); if(w.y>uAGq.y && abs(w.z)<uAGq.z) lim=max(lim,uAGq.x); return a<lim; }`;
+const AGPAN = `bool agPan(vec2 uv, vec3 w){ if(uPanOn<0.5) return agf(w) && vNac<2.5;
+  float id=floor(texture2D(uPanId,uv).r*255.0+0.5); float a=${glsl(B.NX)}-w.x;
+  if(abs(id-${AG_DOOR_PID}.0)<0.5) return false;
+  if(${pidList(AG_NOSE_PIDS)}) return a < ${glsl(AG_BREAK_A)} + max(0.0, w.y-${glsl(AG_POST_Y)})*${glsl(AG_POST_K)} || (w.y>uAGq.y && agf(w));
+  if(${pidList(AG_BELLY_PIDS)}) return a<${glsl(AG_BREAK_A)};
+  return w.y>uAGq.y && agf(w); }`;
 const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos(6.2832*(h+vec3(0.0,0.33,0.67))); }`;
 export function patchMaterial(m, kind, U, ref) {
   m.onBeforeCompile = (sh) => {
@@ -70,6 +86,7 @@ export function patchMaterial(m, kind, U, ref) {
       varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; ${kind === 0 ? 'varying float vNac;' : ''} uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
+      ${kind === 0 ? AGPAN : ''}
       ${kind === 0 ? `bool agDoor(vec2 uv){ if(uPanOn>0.5){ float id=floor(texture2D(uPanId,uv).r*255.0+0.5); return abs(id-${AG_DOOR_PID}.0)<0.5; } return vNac>2.5; }` : ''}
 ${NACD}
       ${zoneGLSL(kind)}`)
@@ -93,7 +110,7 @@ ${NACD}
           if(mod(pc.a,2.0)>0.5) col=pc.rgb;
           if(pc.a>1.5) col=mix(col,vec3(0.05,0.75,1.0),0.45); }
         // layer 4: MH-60T anti-glare on top, always matte
-        if(uAG>0.5 && agf(vW)${kind === 0 ? ' && !agDoor(vMapUv)' : ''}){ col=uC[${ZI('antiglare')}]; agM=1.0; }
+        if(uAG>0.5 && ${kind === 0 ? 'agPan(vMapUv, vW)' : 'agf(vW)'}){ col=uC[${ZI('antiglare')}]; agM=1.0; }
       }
       // layer 5: engine nacelle flat black, selected by mesh faces (markNacelles): 1 = inlet lip torus, 2 = exhaust opening surfaces
       if(uNac>0.5){ float nk=step(0.5,vNac)*step(vNac,2.5);
