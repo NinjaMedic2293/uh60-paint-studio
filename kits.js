@@ -169,29 +169,6 @@ export function buildKits(M) {
   for (const k in K) K[k].name = 'kit-' + k;
   return K;
 }
-// Rescue hoist above the right cabin door (boom, drum, hook)
-// External rescue hoist (HH-60 / UH-60 class, Goodrich 44301-style), above the forward edge of the RIGHT cabin door.
-// Mounted on the cabin-roof shoulder (fuselage measured at a=3.4-3.8: side skin top y~2.25 z~1.28, roof shoulder y~2.30 z~0.85).
-// Sizes from the user's HH-60W front photo as ratios of one windscreen pane (~0.80 m): boom tube 0.12, head 0.30 w x 0.40 h,
-// head centre ~0.30 m outboard of the cabin side and ~0.75 m above the shoulder; hook ~0.12 m.
-export function buildHoist(M) {
-  const g = new THREE.Group(); const A = 3.55;
-  // mounting saddle: sits on the roof shoulder and wraps down onto the side skin (sunk 2 cm into the skin so there is no gap)
-  g.add(mesh(new RoundedBoxGeometry(0.56, 0.12, 0.50, 3, 0.04), M.hoist, P(A, 2.33, 1.04)));
-  g.add(mesh(new RoundedBoxGeometry(0.50, 0.26, 0.08, 3, 0.03), M.hoist, P(A, 2.20, 1.255)));
-  g.add(mesh(new RoundedBoxGeometry(0.30, 0.20, 0.30, 3, 0.06), M.hoist, P(A, 2.46, 1.08)));
-  // curved boom: up from the saddle, out over the door
-  g.add(tube([P(A, 2.42, 1.08), P(A, 2.75, 1.16), P(A, 2.98, 1.36), P(A, 3.05, 1.56)], 0.065, 0.055, M.hoist));
-  // hoist head: drum housing, axis fore-aft, with motor end cap and lower guide
-  const head = mesh(new RoundedBoxGeometry(0.42, 0.40, 0.30, 4, 0.12), M.hoist, P(A, 3.02, 1.60)); g.add(head);
-  g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.10, 24), M.darkMetal, P(A - 0.24, 3.04, 1.60), [0, 0, Math.PI / 2]));
-  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.10, 12), M.darkMetal, P(A, 2.78, 1.62)));
-  // cable + hook (stowed short)
-  g.add(mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.16, 6), M.darkMetal, P(A, 2.66, 1.62)));
-  g.add(mesh(new RoundedBoxGeometry(0.06, 0.12, 0.06, 2, 0.02), M.darkMetal, P(A, 2.54, 1.62)));
-  g.add(mesh(new THREE.TorusGeometry(0.045, 0.012, 8, 20, Math.PI * 1.6), M.darkMetal, P(A, 2.43, 1.62), [0, Math.PI / 2, 0]));
-  g.name = 'hoist'; g.userData.label = 'External rescue hoist'; return g;
-}
 // Main-rotor bifilar vibration absorber: 4 arms at 45 deg to the blades on top of the hub, each with a pendulum weight.
 // (Replaces the solid dome in the source model, which is not a UH-60 part.)
 export function buildBifilar(M, hub = [1.63, 0], y = 3.98) {
