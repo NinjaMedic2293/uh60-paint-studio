@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHeli, GROUP, removeRotorCap } from './model.js';
 import { ZONES, PRESETS, NOSES, PROBE_NOSES } from './schemes.js';
-import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS } from './paint.js';
+import { ZKEYS, zoneUniforms, patchMaterial, textureRef, BREAKS, markNacelles } from './paint.js';
 import { loadFonts, createMarks, fuselageOnly, migrate, USCG, FAA, newText } from './lettering.js';
 import { setupLettering } from './lettering-ui.js';
 import { kitMaterials, buildKits, buildHoist, buildSearchlight, buildProbe, buildBifilar, buildTanks, P } from './kits.js';
@@ -54,6 +54,7 @@ KM.tank = KM.hoist.clone(); KM.tankCap = new THREE.MeshPhysicalMaterial({ color:
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 scene.add(buildBifilar(KM));
 let decals = null; let decalKey = '';
+const NACSEL = markNacelles(mesh, GROUP.fuselage, BREAKS.NX, mats[GROUP.fuselage].map.image);
 await loadFonts(); const FM = fuselageOnly(mesh, GROUP.fuselage); const MARKS = createMarks(scene, FM);
 let PROBE = null, probeKey = '';
 let LET = null;
@@ -167,7 +168,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';

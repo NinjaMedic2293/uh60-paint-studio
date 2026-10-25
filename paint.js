@@ -61,10 +61,10 @@ const DBG = `vec3 dbgC(int i){ float h=fract(float(i)*0.618); return 0.5+0.5*cos
 export function patchMaterial(m, kind, U, ref) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U); sh.uniforms.uRef = { value: ref };
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;' + (kind === 0 ? '\nattribute float aNac; varying float vNac;' : ''))
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;' + (kind === 0 ? ' vNac=aNac;' : ''));
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
+      varying vec3 vW; uniform vec3 uC[${ZKEYS.length}]; ${kind === 0 ? 'varying float vNac;' : ''} uniform float uNac,uAG,uST,uDbg,uRef,uPanOn; uniform vec4 uAGp,uAGq;
       uniform int uPN,uRN; uniform vec4 uPl[${MAXP}]; uniform vec4 uRS[${MAXR * 2}]; uniform vec3 uRC[${MAXR}];
       uniform sampler2D uPanId, uPanC; float agM=0.0; ${DBG} ${AGF}
 ${NACD}
@@ -91,22 +91,9 @@ ${NACD}
         // layer 4: MH-60T anti-glare on top, always matte
         if(uAG>0.5 && agf(vW)){ col=uC[${ZI('antiglare')}]; agM=1.0; }
       }
-      // layer 5: engine nacelle inlet lip/face and exhaust (IR suppressor) opening, flat black (MH-60T 6008/6029/6019 photos)
-      if(uNac>0.5){ float a=${glsl(B.NX)}-vW.x, az=abs(vW.z);
-        // inlet: cylinder about the nacelle axis (y 2.68, |z| 0.965, along x). Black inside radius R from the lip plane (a 4.24) into the duct.
-        float r=length(vec2(vW.y-NAC_IY, az-NAC_IZ)); float fr=max(fwidth(r),1e-4), fa=max(fwidth(a),1e-4);
-        float lip=(1.0-smoothstep(NAC_IR-fr,NAC_IR+fr,r))*smoothstep(NAC_IA0-fa,NAC_IA0+fa,a)*(1.0-smoothstep(NAC_IL-fa,NAC_IL+fa,a));
-        float duct=(1.0-smoothstep(NAC_DR-fr,NAC_DR+fr,r))*smoothstep(NAC_IA0-fa,NAC_IA0+fa,a)*(1.0-smoothstep(NAC_IA1-fa,NAC_IA1+fa,a));
-        vec3 gN=normalize(cross(dFdx(vW),dFdy(vW))); vec2 rad=vec2(vW.y-NAC_IY, az-NAC_IZ); vec2 gyz=vec2(gN.y, gN.z*sign(vW.z));
-        // duct only on inward-facing surfaces (inside the inlet), so the outer cowling never picks it up; sign of gN is ambiguous, so use |cos|
-        float inward=1.0-smoothstep(0.35,0.6,abs(dot(normalize(gyz+1e-5),normalize(rad+1e-5)))*length(gyz));
-        duct*=max(inward, 1.0-step(0.5,pm));
-        float inl=max(lip,duct);
-        // exhaust / IR suppressor: everything aft of a cutoff plane (slanted to follow the suppressor's front edge) within the nacelle envelope
-        float ec=a-(NAC_EA+0.18*(vW.y-2.6)); float fe=max(fwidth(ec),1e-4);
-        float env=step(2.12,vW.y)*step(vW.y,3.02)*step(0.62,az)*step(az,1.7)*step(a,7.85);
-        float exh=smoothstep(-fe,fe,ec)*env;
-        float nk=max(inl,exh); if(nk>0.0){ col=mix(col,uC[${ZI('nacelle')}],nk); pm=max(pm,nk); agM=max(agM,nk); lum=mix(lum,min(lum,1.0),nk); } }` : ''}
+      // layer 5: engine nacelle flat black, selected by mesh faces (markNacelles): 1 = inlet lip torus, 2 = exhaust opening surfaces
+      if(uNac>0.5){ float nk=step(0.5,vNac);
+        if(nk>0.0){ col=uC[${ZI('nacelle')}]; pm=1.0; agM=1.0; lum=min(lum,1.0); } }` : ''}
       vec3 paint=col*clamp(mix(1.0,lum,0.85),0.45,1.45);
       if(uDbg>0.5 && z>=0) paint=dbgC(z)*clamp(lum,0.6,1.2);
       diffuseColor.rgb*=mix(tx.rgb,paint,pm); agM*=pm;`)
@@ -125,3 +112,26 @@ export function textureRef(tex, kind) {
   for (let i = 0; i < d.length; i += 4) { const r = L(d[i]), gg = L(d[i + 1]), b = L(d[i + 2]); if (kind === 0 && !(gg - Math.max(r, b) * 1.02 > 0)) continue; s += .3 * r + .59 * gg + .11 * b; n++; }
   return n ? s / n : 0.1;
 }
+
+// Per-face nacelle selection on the fuselage mesh (non-indexed): flags the inlet lip torus faces (forward-facing faces of the rim
+// ring around each inlet opening) and the exhaust opening's own (unpainted, interior) faces. Writes attribute aNac (0/1/2).
+export function markNacelles(mesh, matIndex, NX, img) {
+  const g = mesh.geometry, P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv, n = P.count;
+  const out = new Float32Array(n); const gr = g.groups.find(q => q.materialIndex === matIndex);
+  let d = null, W = 0, H = 0; if (img) { const c = document.createElement('canvas'); W = c.width = img.width; H = c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); d = x.getImageData(0, 0, W, H).data; }
+  const paint = (u, v) => { if (!d) return true; const px = ((Math.floor(u * W) % W) + W) % W, py = ((Math.floor((1 - v) * H) % H) + H) % H, k = (py * W + px) * 4; return d[k + 1] - Math.max(d[k], d[k + 2]) * 1.02 > 0; };
+  const M = mesh.matrixWorld, nm = new THREE.Matrix3().getNormalMatrix(M); const v = [0, 1, 2].map(() => new THREE.Vector3()), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), fn = new THREE.Vector3(), c = new THREE.Vector3();
+  let nl = 0, ne = 0;
+  for (let t = gr.start; t < gr.start + gr.count; t += 3) {
+    for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(P, t + k).applyMatrix4(M);
+    c.copy(v[0]).add(v[1]).add(v[2]).divideScalar(3); fn.crossVectors(e1.subVectors(v[1], v[0]), e2.subVectors(v[2], v[0])).normalize();
+    if (N) { const nn = new THREE.Vector3().fromBufferAttribute(N, t).applyMatrix3(nm); if (nn.dot(fn) < 0) fn.negate(); }
+    const a = NX - c.x, az = Math.abs(c.z), r = Math.hypot(c.y - NAC.iy, az - NAC.iz); let f = 0;
+    const L = Math.max(v[0].distanceTo(v[1]), v[1].distanceTo(v[2]), v[2].distanceTo(v[0]));
+    if (a > NAC.a0 && a < NAC.a1 && r > NAC.r0 && r < NAC.r1 && fn.x > NAC.fx && L < NAC.L) f = 1;
+    else if (a > NAC.e0 && a < NAC.e1 && c.y > 2.12 && c.y < 3.02 && az > 0.6 && az < 1.7) { const uu = (U.getX(t) + U.getX(t + 1) + U.getX(t + 2)) / 3, vv = (U.getY(t) + U.getY(t + 1) + U.getY(t + 2)) / 3; if (!paint(uu, vv)) f = 2; }
+    if (f) { out[t] = out[t + 1] = out[t + 2] = f; f === 1 ? nl++ : ne++; }
+  }
+  g.setAttribute('aNac', new THREE.BufferAttribute(out, 1)); return { lip: nl, exhaust: ne };
+}
+export const NAC = { iy: 2.68, iz: 0.965, a0: 4.28, a1: 4.40, r0: 0.16, r1: 0.37, fx: 0.25, L: 0.105, e0: 6.6, e1: 7.85 };

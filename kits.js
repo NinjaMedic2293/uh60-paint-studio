@@ -240,9 +240,9 @@ export function buildTanks(M) {
     const st = mesh(new RoundedBoxGeometry(0.50, 0.10, 0.85, 3, 0.04), M.tank, P(AS, 1.95, s * 1.62), [s * 0.35, 0, 0]); g.add(st);
     const py = mesh(new RoundedBoxGeometry(0.40, 0.30, 0.08, 2, 0.02), M.darkMetal, P(AS, 1.66, s * 1.98)); g.add(py);
     const prof = [[0, 0], [0.12, 0.02], [0.22, 0.12], [0.28, 0.35], [0.29, 0.8], [0.29, 1.7], [0.289, 1.78], [0.27, 2.1], [0.18, 2.4], [0, 2.5]];
-    // black front cap = nose dome plus a short band ending ~0.72 m back at a crisp edge (6003 photo)
-    const t = latheX(prof.slice(0, 7), M.tank, 40); t.position.copy(P(AN + 2.5, 1.30, s * 1.98)); t.castShadow = true; g.add(t);
-    const c = latheX(prof.slice(6), M.tankCap || M.tank, 40); c.position.copy(P(AN + 2.5, 1.30, s * 1.98)); c.castShadow = true; g.add(c);
+    // black front cap = nose dome only (from the 0.27 m station forward)
+    const t = latheX(prof.slice(0, 8), M.tank, 40); t.position.copy(P(AN + 2.5, 1.30, s * 1.98)); t.castShadow = true; g.add(t);
+    const c = latheX(prof.slice(7), M.tankCap || M.tank, 40); c.position.copy(P(AN + 2.5, 1.30, s * 1.98)); c.castShadow = true; g.add(c);
   }
   return g;
 }
