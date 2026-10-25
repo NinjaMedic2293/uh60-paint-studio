@@ -14,6 +14,7 @@ import { buildRotors, hideStockRotors } from './rotors.js';
 import { setupPaintTools } from './planes.js';
 import { setupStar } from './star-ui.js';
 import { setupDoors, DOOR_KEYS } from './doors.js';
+import { buildHelitak } from './helitak.js';
 
 const q = new URLSearchParams(location.search);
 const SHOT = q.has('shot'); if (SHOT) document.body.classList.add('shot');
@@ -58,6 +59,7 @@ const KM = kitMaterials(); const KITS = buildKits(KM);
 for (const k in KITS) { KITS[k].visible = false; scene.add(KITS[k]); }
 const HOIST = buildHoist(KM); scene.add(HOIST);
 KM.tank = KM.hoist.clone(); KM.tankCap = new THREE.MeshPhysicalMaterial({ color: '#121212', roughness: 0.95, metalness: 0, clearcoat: 0 }); const TANKS = buildTanks(KM); scene.add(TANKS);
+const HELI = buildHelitak(); scene.add(HELI); let heliClock = performance.now();
 KM.bypass = new THREE.MeshPhysicalMaterial({ color: '#888', roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide }); KM.bypassDark = new THREE.MeshStandardMaterial({ color: '#0b0b0b', roughness: 1, side: THREE.DoubleSide }); KM.bypassBolt = new THREE.MeshStandardMaterial({ color: '#777', roughness: 0.4, metalness: 0.6 }); 
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
 /* bifilar now part of rotors.js */
@@ -86,7 +88,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   s.planes = s.planes || []; s.regions = s.regions || []; s.panels = s.panels || {}; TOOLS.sync(false);
   glassMats.forEach(m => { m.color.copy(lin(s.colors.glass)); });
   for (const k in KITS) KITS[k].visible = (k === s.nose);
-  HOIST.visible = true; /* hoist always installed */ TANKS.visible = !!s.tanks; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
+  HOIST.visible = true; /* hoist always installed */ TANKS.visible = !!s.tanks; HELI.visible = !!s.helitak; HELI.userData.set(s, !HELI.visible); HELI.userData.M.shell.color.copy(lin(s.helitakMatch ? (s.colors.belly || '#e8e9ea') : '#e8e9ea')); ground.position.y = HELI.visible ? HELI.userData.groundY() : 0; KM.tank.color.copy(lin(s.colors.tank || s.colors.doors)); KM.tankCap.color.copy(lin(s.tankCaps ? (s.colors.tankcap || '#121212') : (s.colors.tank || s.colors.doors)));
   const pk = s.probeSide + '|' + s.nose;
   if (pk !== probeKey) { if (PROBE) scene.remove(PROBE); PROBE = buildProbe(KM, s.probeSide, s.nose); scene.add(PROBE); probeKey = pk; }
   KM.bypass.color.copy(lin(s.colors.cowl || s.colors.upper)); KM.bypass.roughness = s.finish; KM.bypass.clearcoat = 0.3;
@@ -130,7 +132,7 @@ function draw() {
 // ---------- equipment legend overlay: label lines like the reference graphic
 let showLabels = false; const lab = document.getElementById('labels');
 function labelTargets() { const out = []; const add = o => { if (o.userData.label && o.visible) out.push(o); };
-  KITS[S.nose]?.children.forEach(add); if (PROBE?.visible) add(PROBE); if (HOIST.visible) out.push(Object.assign(HOIST, { userData: { ...HOIST.userData, label: HOIST.userData.label || 'Rescue hoist' } })); if (LIGHT.visible) { LIGHT.userData.label = 'Searchlight'; out.push(LIGHT); } return out; }
+  KITS[S.nose]?.children.forEach(add); if (PROBE?.visible) add(PROBE); if (HOIST.visible) out.push(Object.assign(HOIST, { userData: { ...HOIST.userData, label: HOIST.userData.label || 'Rescue hoist' } })); if (LIGHT.visible) { LIGHT.userData.label = 'Searchlight'; out.push(LIGHT); } if (HELI.visible) out.push(HELI); return out; }
 function drawLabels() {
   if (!showLabels || cmp) { lab.innerHTML = ''; return; }
   const r = canvas.getBoundingClientRect(), W = r.width, H = r.height, v = new THREE.Vector3(), b = new THREE.Box3();
@@ -143,7 +145,7 @@ function drawLabels() {
     svg += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#d0212b"/><path d="M${p.x} ${p.y}V${ly}H${lx}" stroke="#d0212b" stroke-width="2" fill="none"/><text x="${lx + 2}" y="${ly - 6}" font-size="12" font-weight="700" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke" font-family="Arial, sans-serif">${name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`; });
   lab.innerHTML = svg + '</svg>';
 }
-function loop() { requestAnimationFrame(loop); controls.update(); if (DOORS.tick()) needs = true; if (needs || cmp) { needs = false; draw(); drawLabels(); } }
+function loop() { requestAnimationFrame(loop); controls.update(); if (DOORS.tick()) needs = true; { const n = performance.now(), dt = Math.min(0.1, (n - heliClock) / 1000); heliClock = n; if (HELI.visible && HELI.userData.tick(dt)) { ground.position.y = HELI.userData.groundY(); needs = true; } } if (needs || cmp) { needs = false; draw(); drawLabels(); } }
 
 // ---------- UI
 const $ = id => document.getElementById(id);
@@ -153,7 +155,7 @@ for (const [name, v] of Object.entries(VIEWS)) { const b = document.createElemen
 $('zones').innerHTML = ZONES.map(([k, l]) => `<div class="zone"><input type="color" data-z="${k}"><span>${l}</span></div>`).join('');
 function syncUI() {
   TOOLS.sync(true);
-  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right';
+  $('nose').value = S.nose; ['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps', 'helitak', 'helitakMatch'].forEach(k => $(k).checked = !!S[k]); $('probeSide').value = S.probeSide || 'right'; $('helitakExt').value = S.helitakExt ? '1' : '0';
   DOOR_KEYS.forEach(([k]) => $('door_' + k).checked = !!(S.doors && S.doors[k]));
   $('finish').value = S.finish; migrate(S); LET?.render(); STAR.render();
   document.querySelectorAll('[data-z]').forEach(i => i.value = S.colors[i.dataset.z]);
@@ -161,7 +163,8 @@ function syncUI() {
 $('preset').onchange = e => { S = clone(PRESETS[+e.target.value]); syncUI(); apply(S); };
 $('nose').onchange = e => { S.nose = e.target.value; S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); };
 $('probeSide').onchange = e => { S.probeSide = e.target.value; apply(S); };
-['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
+$('helitakExt').onchange = e => { S.helitakExt = e.target.value === '1'; apply(S); };
+['antiglare', 'stripe', 'hoist', 'light', 'cross', 'probe', 'lidar', 'tanks', 'nacelles', 'tankCaps', 'helitak', 'helitakMatch'].forEach(k => $(k).onchange = e => { S[k] = e.target.checked; apply(S); });
 $('doorsRow').innerHTML = DOOR_KEYS.map(([k, l]) => `<label><input type="checkbox" id="door_${k}"> ${l}</label>`).join('');
 DOOR_KEYS.forEach(([k]) => $('door_' + k).onchange = e => { S.doors = { ...(S.doors || {}), [k]: e.target.checked }; apply(S); });
 $('finish').oninput = e => { S.finish = +e.target.value; apply(S); };
@@ -187,7 +190,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { DOORS, ROTORS, NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { DOORS, HELI, ground, ROTORS, NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';
