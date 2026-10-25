@@ -43,14 +43,11 @@ export function buildHoist(M) {
   const prof = capsule(L, 0.11, 0.157, R), rAt = x => { let b = prof[0]; for (const q of prof) if (Math.abs(q[1] - x) < Math.abs(b[1] - x)) b = q; return b[0]; };
   const head = latheX(prof, paint, new THREE.Vector3(HX, HY, HZ), 1.0); g.add(head);
   // seam bands between the drum housing and the end housings
-  // aft end: small round hoist light lens high on the aft face (33)
-  const AE = HX - L / 2;
-  g.add(mesh(new THREE.CylinderGeometry(0.046, 0.05, 0.02, 28), dark, new THREE.Vector3(AE + 0.035, HY + 0.03, HZ + 0.01), [0, 0, Math.PI / 2 + 0.5]));
-  g.add(mesh(new THREE.SphereGeometry(0.04, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), lens, new THREE.Vector3(AE + 0.03, HY + 0.03, HZ + 0.01), [0, 0, Math.PI / 2 + 0.5]));
-  // forward outboard: recessed cable-guide / level-wind window and a small access panel (33, 34)
-  const FE = HX + L / 2;
-  { const sl = new THREE.Shape(), w = 0.06, h = 0.036, r = 0.025; sl.moveTo(-w + r, -h); sl.lineTo(w - r, -h); sl.quadraticCurveTo(w, -h, w, -h + r); sl.lineTo(w, h - r); sl.quadraticCurveTo(w, h, w - r, h); sl.lineTo(-w + r, h); sl.quadraticCurveTo(-w, h, -w, h - r); sl.lineTo(-w, -h + r); sl.quadraticCurveTo(-w, -h, -w + r, -h);
-    const gx = L / 2 - 0.17, o = mesh(new THREE.ExtrudeGeometry(sl, { depth: 0.05, bevelEnabled: false, curveSegments: 12 }), dark, new THREE.Vector3(HX + gx, HY - 0.06, HZ + Math.sqrt(rAt(gx) ** 2 - 0.06 ** 2) - 0.047), [0.35, 0, 0]); g.add(o); }
+  // forward outboard face: hoist light/camera lens + fittings (photo 34)
+  const FE = HX + L / 2, ld = new THREE.Vector3(1, -0.15, 0.75).normalize(), lq = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), ld);
+  { const lp = new THREE.Vector3(FE - 0.07, HY + 0.01, HZ + 0.075); const c = mesh(new THREE.CylinderGeometry(0.046, 0.05, 0.03, 28), dark, lp); c.quaternion.copy(lq); g.add(c); const h = mesh(new THREE.SphereGeometry(0.04, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), lens, lp.clone().addScaledVector(ld, 0.012)); h.quaternion.copy(lq); g.add(h);
+    for (const dy of [-0.07, 0.075]) { const f = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.03, 12), dark, new THREE.Vector3(FE - 0.1, HY + dy, HZ + 0.1)); f.quaternion.copy(lq); g.add(f); } }
+  // (side slot removed: not visible in photos 30/33/34)
   // panel lines (thin slightly darker grooves) and flush latches, as in photo 33
   const seam = paint.clone(); seam.onBeforeRender = () => {}; const seamCol = () => seam.color.copy(paint.color).multiplyScalar(0.72);
   for (const dx of [-0.30, 0.05]) { const t = mesh(new THREE.TorusGeometry(rAt(dx) + 0.0008, 0.0025, 6, 64), seam, new THREE.Vector3(HX + dx, HY, HZ), [0, Math.PI / 2, 0]); t.onBeforeRender = seamCol; g.add(t); }
@@ -59,17 +56,19 @@ export function buildHoist(M) {
 
   // ---- support arm: foot on the cabin roof edge at the door top rail (below/outboard of the inlet), leaning up and outboard
   // clear of the nacelle side, then turning vertical into the head underside slightly aft and inboard of the head centre.
-  const AA = HA + 0.06, AX = P(AA, 0, 0).x;
+  const AA = HA + 0.20, AX = P(AA, 0, 0).x;
   const root = new THREE.Vector3(AX, 2.19, 1.01), tip = new THREE.Vector3(AX, HY - R + 0.04, HZ - 0.05);
   const arm = new THREE.CubicBezierCurve3(root, new THREE.Vector3(AX, 2.45, 1.30), new THREE.Vector3(AX, tip.y - 0.30, tip.z + 0.02), tip);
   g.add(sweep(arm, 0.062, 0.047, paint, 2.2, 1.45));   // oval: ~0.27 x 0.12 m at the root (faired), ~0.14 x 0.09 m at the head
   // root fitting: tapered collar + bolted base plate on the skin
   g.add(sweep([new THREE.Vector3(AX, 2.14, 0.975), new THREE.Vector3(AX, 2.19, 1.01), new THREE.Vector3(AX, 2.24, 1.05)], 0.078, 0.066, paint, 2.0));
-  g.add(mesh(new THREE.BoxGeometry(0.30, 0.02, 0.17), paint, new THREE.Vector3(AX, 2.14, 0.98), [-0.5, 0, 0]));
+  g.add(mesh(new THREE.BoxGeometry(0.44, 0.02, 0.19), paint, new THREE.Vector3(AX, 2.14, 0.98), [-0.5, 0, 0]));
   for (const dx of [-0.085, 0.085]) for (const dz of [-0.045, 0.045]) { const o = new THREE.Vector3(dx, 0.013, dz).applyEuler(new THREE.Euler(-0.5, 0, 0));
     g.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.01, 10), dark, new THREE.Vector3(AX, 2.14, 0.98).add(o), [-0.5, 0, 0])); }
   // saddle: small fairing where the arm enters the head
   const sad = mesh(new THREE.SphereGeometry(1, 32, 16), paint, new THREE.Vector3(AX, HY - R + 0.035, HZ - 0.05)); sad.scale.set(0.12, 0.06, 0.08); g.add(sad);
+  // cable-guide: twin rollers + yoke either side of the fairlead (photo 33)
+  for (const sx of [-1, 1]) { g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.05, 16), dark, new THREE.Vector3(HX + sx * 0.035, HY - R - 0.005, HZ + 0.02), [Math.PI / 2, 0, 0])); g.add(mesh(new THREE.BoxGeometry(0.012, 0.05, 0.07), paint, new THREE.Vector3(HX + sx * 0.065, HY - R + 0.01, HZ + 0.02))); }
 
   // ---- cable exits the CENTRE of the head underside; bumper (black, white band), swivel and hook stow just below
   const cx = HX, cz = HZ + 0.02, yb = HY - R;
