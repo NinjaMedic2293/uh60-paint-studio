@@ -3,7 +3,7 @@
 // World frame: nose tip at x = NX, a = NX - x (metres aft of nose), +y up, +z right, ground y = 0.
 import * as THREE from 'three';
 export const NX = 6.243;
-export const DIM = { mrR: 5.64, trR: 0.83, mrA: 3.16, mrY: 3.12, trA: 9.62, trY: 1.50, skidHalf: 0.95 };
+export const DIM = { mrR: 5.64, trR: 0.83, mrA: 3.16, mrY: 3.12, trA: 9.62, trY: 1.50, skidHalf: 0.86 };
 const cr = (p0, p1, p2, p3, t) => 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
 // station: [a, yBot, yTop, halfWidth, nUpper, chineFrac, nLower]. Section = two superellipse halves meeting at the chine
 // (max width) at y = yb + chineFrac*(yt-yb); a low chine with a high lower exponent gives the flat-sided, flat-bottomed 505 cabin.
@@ -37,9 +37,9 @@ function plate(outline, thick, plane = 'xy', zc = 0) {
 
 // ---------- fuselage: side profile (yb, yt) from c12/c17/c25, plan half-width and section shape from front/rear views (c22, c20) and specs
 export const FUS = [
-  [-0.06, 0.79, 0.85, 0.05, 2.0, 0.50, 2.0], [-0.02, 0.72, 0.95, 0.17, 2.0, 0.45, 2.0], [0.10, 0.67, 1.06, 0.27, 2.0, 0.42, 2.2], [0.25, 0.63, 1.26, 0.41, 2.1, 0.38, 2.6],
-  [0.45, 0.60, 1.55, 0.56, 2.1, 0.34, 3.0], [0.70, 0.56, 1.88, 0.68, 2.2, 0.31, 3.4], [1.00, 0.54, 2.16, 0.79, 2.3, 0.29, 3.8], [1.30, 0.53, 2.33, 0.83, 2.5, 0.28, 4.0],
-  [1.70, 0.53, 2.40, 0.84, 2.9, 0.28, 4.2], [2.30, 0.53, 2.39, 0.84, 2.9, 0.28, 4.2], [2.85, 0.56, 2.33, 0.81, 2.8, 0.30, 4.0], [3.30, 0.64, 2.25, 0.73, 2.7, 0.33, 3.4],
+  [-0.06, 0.79, 0.80, 0.05, 2.0, 0.50, 2.0], [-0.02, 0.72, 0.90, 0.17, 2.0, 0.45, 2.0], [0.10, 0.67, 1.00, 0.27, 2.0, 0.42, 2.2], [0.25, 0.63, 1.13, 0.41, 2.1, 0.38, 2.6],
+  [0.45, 0.60, 1.31, 0.56, 2.1, 0.34, 3.0], [0.70, 0.56, 1.54, 0.68, 2.2, 0.31, 3.4], [1.00, 0.54, 1.81, 0.79, 2.3, 0.29, 3.8], [1.30, 0.53, 2.06, 0.83, 2.5, 0.28, 4.0],
+  [1.70, 0.53, 2.32, 0.84, 2.9, 0.28, 4.2], [2.30, 0.53, 2.39, 0.84, 2.9, 0.28, 4.2], [2.85, 0.56, 2.33, 0.81, 2.8, 0.30, 4.0], [3.30, 0.64, 2.25, 0.73, 2.7, 0.33, 3.4],
   [3.90, 0.84, 2.14, 0.57, 2.6, 0.42, 2.8], [4.50, 1.08, 1.97, 0.40, 2.4, 0.50, 2.4], [5.10, 1.24, 1.79, 0.27, 2.2, 0.50, 2.2], [6.00, 1.32, 1.72, 0.22, 2.0, 0.50, 2.0],
   [8.00, 1.38, 1.68, 0.16, 2.0, 0.50, 2.0], [9.60, 1.41, 1.63, 0.11, 2.0, 0.50, 2.0], [9.95, 1.43, 1.61, 0.09, 2.0, 0.50, 2.0], [9.97, 1.50, 1.54, 0.01, 2.0, 0.50, 2.0]];
 export const COWL = [[1.75, 2.10, 2.27, 0.05, 3.0], [1.95, 2.10, 2.47, 0.50, 3.0], [2.50, 2.10, 2.60, 0.60, 3.0], [3.60, 2.10, 2.62, 0.60, 3.0],
@@ -59,11 +59,11 @@ function patch(a0, a1, thLo, thHi, nu = 40, nv = 24, off = 0.008) { const pos = 
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
 const rr = (a, a0, a1, r) => { const d = Math.min(a - a0, a1 - a); return d >= r ? 0 : r - Math.sqrt(Math.max(0, r * r - (r - d) ** 2)); };
 export const WIN = {
-  ws: { a0: 0.36, a1: 1.50, low: a => a < 0.8 ? 0.93 - 0.40 * (a - 0.36) : Math.min(0.80, 0.754 + 0.1 * (a - 0.8)) }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
-  door: { a0: 1.80, a1: 2.42, yb: 0.90, yt: 2.22, r: 0.14 }, rear: { a0: 2.52, a1: 2.92, yb: 1.00, yt: 2.18, r: 0.12 } };
+  ws: { a0: 0.20, a1: 1.45, low: a => a < 0.6 ? 0.80 + 0.35 * (0.6 - a) : 0.80 }, // wraparound windscreen: from just behind the nose tip, down the sides to near the chine, back over the roof front
+  door: { a0: 1.64, a1: 2.72, yb: 0.86, yt: 2.22, r: 0.16 }, rear: { a0: 2.86, a1: 3.14, yb: 1.05, yt: 2.10, r: 0.10 } };
 const wsLo = a => Math.min(WIN.ws.low(a) + rr(a, WIN.ws.a0 - 0.25, WIN.ws.a1, 0.14), fusAt(a)[1] - 0.03);
 // red roof aft of the windscreen header: from WS_TOP aft the glass only covers the sides, up to wsHi(a)
-const WS_TOP = 1.22, wsHi = a => a < WS_TOP ? 9 : fusAt(a)[1] - 0.12 - 0.5 * (a - WS_TOP);
+const WS_TOP = 1.38, wsHi = a => a < WS_TOP ? 9 : fusAt(a)[1] - 0.12 - 0.5 * (a - WS_TOP);
 const inWin = (a, y, z) => { const W = WIN.ws; if (a > W.a0 && a < W.a1 && y > wsLo(a) && y < wsHi(a)) return true;
   if (Math.abs(z) < 0.3) return false; for (const w of [WIN.door, WIN.rear]) if (a > w.a0 && a < w.a1 && y > w.yb + rr(a, w.a0, w.a1, w.r) && y < w.yt - rr(a, w.a0, w.a1, w.r)) return true; return false; };
 // drop body faces behind the glass so the cabin can be seen through it
@@ -121,9 +121,9 @@ export function buildBell505() {
   const trim = frames();
   { const pts = []; for (let a = WIN.ws.a0 + 0.04; a <= WIN.ws.a1 - 0.02; a += 0.05) { const p = surfPt(a, Math.PI / 2, 0.012); pts.push([NX - p[0], p[1], 0]); } trim.push(tube(pts, 0.018, 6)); }
   for (const s of [-1, 1]) {
-    for (const [a, y0, y1] of [[1.73, 0.56, 2.30], [2.47, 0.56, 2.32], [3.18, 0.62, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
-    for (const [a, y] of [[1.77, 1.25], [1.77, 1.95], [2.51, 1.25], [2.51, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
-    for (const a of [2.36, 3.10]) trim.push(at(new THREE.BoxGeometry(0.17, 0.035, 0.03), a, 0.80, zAt(a, 0.80, s) + s * 0.016)); // handles
+    for (const [a, y0, y1] of [[1.58, 0.56, 2.28], [2.79, 0.56, 2.32], [3.20, 0.62, 2.22]]) { const pts = []; for (let y = y0; y <= y1; y += 0.04) pts.push([a, y, zAt(a, y, s) + s * 0.004]); trim.push(tube(pts, 0.007, 4)); }
+    for (const [a, y] of [[1.62, 1.25], [1.62, 1.95], [2.83, 1.25], [2.83, 1.95]]) trim.push(at(new THREE.BoxGeometry(0.07, 0.10, 0.03), a, y, zAt(a, y, s) + s * 0.012)); // hinges
+    for (const a of [2.68, 3.12]) trim.push(at(new THREE.BoxGeometry(0.17, 0.035, 0.03), a, 0.80, zAt(a, 0.80, s) + s * 0.016)); // handles
     trim.push(at(new THREE.BoxGeometry(0.55, 0.22, 0.03), 3.70, 2.30, s * 0.585));
     for (let k = 0; k < 5; k++) trim.push(at(new THREE.BoxGeometry(0.53, 0.012, 0.045), 3.70, 2.22 + k * 0.042, s * 0.595)); }
   { const d = new THREE.Vector3(-0.55, 0.55, 0.62).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
@@ -133,8 +133,8 @@ export function buildBell505() {
   // ---------- landing gear: skid tubes (paintable) + arched dark crosstubes, steps
   const sk = [], xt = [], H = DIM.skidHalf;
   for (const s of [-1, 1]) { sk.push(tube([[0.80, 0.30, s * H], [0.95, 0.11, s * H], [1.20, 0.05, s * H], [2.6, 0.05, s * H], [4.25, 0.05, s * H], [4.40, 0.08, s * H]], 0.04));
-    sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.85, 0.27, s * 0.90)); }
-  for (const a of [1.58, 3.42]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.90], [a, 0.47, -0.68], [a, 0.54, -0.35], [a, 0.55, 0], [a, 0.54, 0.35], [a, 0.47, 0.68], [a, 0.30, 0.90], [a, 0.05, H]], 0.045));
+    sk.push(at(new THREE.BoxGeometry(0.34, 0.025, 0.16), 1.85, 0.27, s * 0.82)); }
+  for (const a of [1.58, 3.42]) xt.push(tube([[a, 0.05, -H], [a, 0.30, -0.80], [a, 0.45, -0.62], [a, 0.52, -0.33], [a, 0.53, 0], [a, 0.52, 0.33], [a, 0.45, 0.62], [a, 0.30, 0.80], [a, 0.05, H]], 0.045));
   M('skids', merge(sk), new THREE.MeshStandardMaterial({ color: '#2c2d2f', roughness: 0.5, metalness: 0.3 }));
   M('xtubes', merge(xt), new THREE.MeshStandardMaterial({ color: '#232427', roughness: 0.5, metalness: 0.3 }));
   // ---------- main rotor: mast, swashplate, yoke, grips, pitch horns + links; 2 tapered blades
