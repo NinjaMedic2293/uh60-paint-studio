@@ -10,6 +10,7 @@ import { setupLettering } from './lettering-ui.js';
 import { buildHoist } from './hoist.js';
 import { kitMaterials, buildKits, buildSearchlight, buildProbe, buildBifilar, buildTanks, buildBypass, P } from './kits.js';
 import { buildDecals } from './decals.js';
+import { buildRotors, hideStockRotors } from './rotors.js';
 import { setupPaintTools } from './planes.js';
 import { setupStar } from './star-ui.js';
 
@@ -40,6 +41,7 @@ scene.add(holder);
 mesh.castShadow = mesh.receiveShadow = true;
 fixGeometry(mesh, GROUP, BREAKS.NX);
 window.__capTris = removeRotorCap(mesh, mesh.geometry.groups.findIndex(g => g.materialIndex === GROUP.mainRotor));
+hideStockRotors(mesh, GROUP); const ROTORS = buildRotors(); ROTORS.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); scene.add(ROTORS);
 const U = zoneUniforms();
 const mats = mesh.material;
 const kindOf = { [GROUP.fuselage]: 0, [GROUP.mainRotor]: 1, [GROUP.tailRotor]: 2 };
@@ -57,7 +59,7 @@ const HOIST = buildHoist(KM); scene.add(HOIST);
 KM.tank = KM.hoist.clone(); KM.tankCap = new THREE.MeshPhysicalMaterial({ color: '#121212', roughness: 0.95, metalness: 0, clearcoat: 0 }); const TANKS = buildTanks(KM); scene.add(TANKS);
 KM.bypass = new THREE.MeshPhysicalMaterial({ color: '#888', roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide }); KM.bypassDark = new THREE.MeshStandardMaterial({ color: '#0b0b0b', roughness: 1, side: THREE.DoubleSide }); KM.bypassBolt = new THREE.MeshStandardMaterial({ color: '#777', roughness: 0.4, metalness: 0.6 }); 
 const LIGHT = buildSearchlight(KM); scene.add(LIGHT);
-scene.add(buildBifilar(KM));
+/* bifilar now part of rotors.js */
 let decals = null; let decalKey = '';
 const NACSEL = markNacelles(mesh, GROUP.fuselage, BREAKS.NX, mats[GROUP.fuselage].map.image);
 KM.skin = mats[GROUP.fuselage]; const BYPASS = buildBypass(KM, mesh); scene.add(BYPASS);
@@ -89,6 +91,7 @@ function apply(s, { rebuildDecals = true } = {}) {
   KITS.mh60m.traverse(o => { if (o.userData.lidar) o.visible = !!s.lidar; });
   LIGHT.visible = s.light || s.nose === 'mh60t';
   LIGHT.userData.spot.intensity = s.light ? 600 : 0; KM.lamp.emissiveIntensity = s.light ? 6 : 0;
+  ROTORS.userData.paint(s.colors);
   migrate(s); MARKS.sync(s.marks);
   const key = JSON.stringify([s.cross, s.colors.cross, s.star]);
   if (rebuildDecals && key !== decalKey) { if (decals) { scene.remove(decals); decals.traverse(o => { o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); }); }
@@ -176,7 +179,7 @@ $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => { try { const o = JSON.parse(await e.target.files[0].text()); S = { ...clone(PRESETS[0]), ...o, colors: { ...PRESETS[0].colors, ...(o.colors || {}) } }; if (o.probe === undefined) S.probe = PROBE_NOSES.includes(S.nose); syncUI(); apply(S); } catch (err) { alert('Not a valid scheme file'); } };
 
 // ---------- automation hooks (used for verification renders)
-window.APP = { NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
+window.APP = { ROTORS, NACSEL, TOOLS, MARKS, FM, LET, LT: { USCG, FAA, newText }, drawLabels, setLabels: v => { showLabels = v; }, THREE, scene, camera, renderer, setCam, apply, PRESETS, KITS, BREAKS, U, P, get S() { return S; }, set S(v) { S = v; syncUI(); apply(S); }, draw };
 const pre = q.get('preset'); if (pre !== null) S = clone(PRESETS[+pre]);
 if (q.get('nose')) S.nose = q.get('nose');
 if (q.get('light')) S.light = q.get('light') === '1';
